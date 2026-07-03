@@ -60,12 +60,16 @@ enum AppScanner {
             return url.deletingPathExtension().lastPathComponent
         }()
 
+        let attrs = try? FileManager.default.attributesOfItem(atPath: path)
+        let created = (attrs?[.creationDate] as? Date)?.timeIntervalSince1970 ?? 0
+
         return AppItem(
             id: path,
             name: displayName,
             originalName: displayName,
             path: path,
-            bundleID: bundleID
+            bundleID: bundleID,
+            dateAdded: created
         )
     }
 

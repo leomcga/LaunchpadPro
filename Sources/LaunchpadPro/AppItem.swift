@@ -7,6 +7,7 @@ struct AppItem: Identifiable, Codable, Hashable {
     let originalName: String   // name as read from disk
     let path: String          // full path to the .app bundle
     var bundleID: String?
+    var dateAdded: Double = 0 // file creation time (seconds since 1970)
 
     var url: URL { URL(fileURLWithPath: path) }
 

@@ -14,6 +14,7 @@ final class AppSettings: ObservableObject {
     @Published var rows: Int             { didSet { d.set(rows, forKey: "rows") } }
     @Published var iconSize: Double      { didSet { d.set(iconSize, forKey: "iconSize") } }
     @Published var verticalScroll: Bool  { didSet { d.set(verticalScroll, forKey: "verticalScroll") } }
+    @Published var sortMode: Int         { didSet { d.set(sortMode, forKey: "sortMode") } }  // 0 custom 1 name 2 dateAdded
     @Published var showLabels: Bool      { didSet { d.set(showLabels, forKey: "showLabels") } }
     @Published var backgroundDim: Double { didSet { d.set(backgroundDim, forKey: "backgroundDim") } }
     @Published var hotCornersEnabled: Bool { didSet { d.set(hotCornersEnabled, forKey: "hotCornersEnabled") } }
@@ -31,10 +32,11 @@ final class AppSettings: ObservableObject {
         func dbl(_ k: String, _ def: Double) -> Double { ud.object(forKey: k) == nil ? def : ud.double(forKey: k) }
         func bool(_ k: String, _ def: Bool) -> Bool { ud.object(forKey: k) == nil ? def : ud.bool(forKey: k) }
 
-        columns = int("columns", 7)
+        columns = int("columns", 10)
         rows = int("rows", 5)
-        iconSize = dbl("iconSize", 88)
+        iconSize = dbl("iconSize", 72)
         verticalScroll = bool("verticalScroll", false)
+        sortMode = int("sortMode", 0)
         showLabels = bool("showLabels", true)
         backgroundDim = dbl("backgroundDim", 0.28)
         hotCornersEnabled = bool("hotCornersEnabled", false)

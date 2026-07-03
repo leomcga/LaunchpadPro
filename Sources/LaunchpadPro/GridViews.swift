@@ -8,6 +8,9 @@ struct LauncherRootView: View {
     @ObservedObject var model: LaunchModel
     @ObservedObject var settings = AppSettings.shared
     var onDismiss: () -> Void
+    var onOpenSettings: () -> Void = {}
+    var onRescan: () -> Void = {}
+    var onQuit: () -> Void = {}
 
     @FocusState private var searchFocused: Bool
     @State private var appeared = false
@@ -22,18 +25,20 @@ struct LauncherRootView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { onDismiss() }
 
-            VStack(spacing: 26) {
-                SearchField(text: $model.searchText, focused: $searchFocused)
-                    .frame(width: 460)
-                    .padding(.top, 34)
+            VStack(spacing: 22) {
+                SearchField(text: $model.searchText, focused: $searchFocused,
+                            model: model,
+                            onOpenSettings: onOpenSettings, onRescan: onRescan, onQuit: onQuit)
+                    .frame(width: 420)
+                    .padding(.top, 30)
 
                 GridContainer(model: model, onLaunch: { id in
                     model.launch(id); onDismiss()
                 })
             }
-            .padding(.horizontal, 44)
-            .padding(.bottom, 24)
-            .scaleEffect(appeared ? 1 : 1.05)
+            .padding(.horizontal, 60)
+            .padding(.bottom, 20)
+            .scaleEffect(appeared ? 1 : 1.04)
             .opacity(appeared ? 1 : 0)
 
             if let fid = model.openFolderID, let folder = currentFolder(fid) {
@@ -59,15 +64,20 @@ struct LauncherRootView: View {
 struct SearchField: View {
     @Binding var text: String
     var focused: FocusState<Bool>.Binding
+    @ObservedObject var model: LaunchModel
+    @ObservedObject var settings = AppSettings.shared
+    var onOpenSettings: () -> Void = {}
+    var onRescan: () -> Void = {}
+    var onQuit: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white.opacity(0.7))
-            TextField("搜索", text: $text)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.65))
+            TextField("搜索应用", text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 16))
+                .font(.system(size: 15))
                 .foregroundStyle(.white)
                 .focused(focused)
             if !text.isEmpty {
@@ -76,12 +86,42 @@ struct SearchField: View {
                         .foregroundStyle(.white.opacity(0.6))
                 }.buttonStyle(.plain)
             }
+            optionsMenu
         }
-        .padding(.horizontal, 15)
-        .padding(.vertical, 9)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(.white.opacity(0.18), lineWidth: 1))
-        .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.16), lineWidth: 1))
+        .shadow(color: .black.opacity(0.22), radius: 8, y: 3)
+    }
+
+    private var optionsMenu: some View {
+        Menu {
+            Button("设置…") { onOpenSettings() }
+            Divider()
+            Picker("排序方式", selection: Binding(
+                get: { settings.sortMode },
+                set: { settings.sortMode = $0; model.applySort() })) {
+                Text("自定义").tag(0)
+                Text("名称").tag(1)
+                Text("添加日期").tag(2)
+            }
+            Picker("浏览样式", selection: $settings.verticalScroll) {
+                Text("分页").tag(false)
+                Text("滚动").tag(true)
+            }
+            Divider()
+            Button("重新扫描 App") { onRescan() }
+            Button("退出") { onQuit() }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 15))
+                .foregroundStyle(.white.opacity(0.7))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .frame(width: 22)
     }
 }
 
@@ -101,14 +141,15 @@ struct GridContainer: View {
             let cell = cellSize(in: geo.size, columns: columns)
             if settings.verticalScroll || searchActive {
                 ScrollView(.vertical, showsIndicators: false) {
-                    LazyVGrid(columns: gridColumns(columns), spacing: 30) {
+                    LazyVGrid(columns: gridColumns(columns), spacing: 22) {
                         ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                             EntryCell(model: model, entry: entry, index: index,
                                       cell: cell, draggable: !searchActive, onLaunch: onLaunch)
                         }
                     }
-                    .padding(.vertical, 16)
-                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                    .frame(maxWidth: .infinity, alignment: .top)
                 }
             } else {
                 PagedGrid(model: model, entries: entries, columns: columns,
@@ -118,12 +159,12 @@ struct GridContainer: View {
     }
 
     private func gridColumns(_ n: Int) -> [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 22), count: n)
+        Array(repeating: GridItem(.flexible(), spacing: 16), count: n)
     }
 
     private func cellSize(in size: CGSize, columns: Int) -> CGSize {
-        let w = max(96, (size.width - CGFloat(columns - 1) * 22) / CGFloat(columns))
-        return CGSize(width: w, height: settings.iconSize + (settings.showLabels ? 40 : 12))
+        let w = max(70, (size.width - CGFloat(columns - 1) * 16) / CGFloat(columns))
+        return CGSize(width: w, height: settings.iconSize + (settings.showLabels ? 34 : 10))
     }
 }
 
@@ -157,8 +198,7 @@ struct PagedGrid: View {
                 LazyHStack(spacing: 0) {
                     ForEach(Array(pageList.enumerated()), id: \.offset) { pIndex, pageEntries in
                         VStack {
-                            Spacer(minLength: 0)
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 22), count: columns), spacing: 30) {
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: columns), spacing: 22) {
                                 ForEach(pageEntries, id: \.1.id) { index, entry in
                                     EntryCell(model: model, entry: entry, index: index,
                                               cell: cell, draggable: true, onLaunch: onLaunch)
@@ -166,6 +206,7 @@ struct PagedGrid: View {
                             }
                             Spacer(minLength: 0)
                         }
+                        .padding(.top, 8)
                         .padding(.horizontal, 10)
                         .frame(width: size.width)
                         .id(pIndex)

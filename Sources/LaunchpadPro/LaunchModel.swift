@@ -34,6 +34,7 @@ final class LaunchModel: ObservableObject {
         appIndex = Dictionary(uniqueKeysWithValues: scanned.map { ($0.id, $0) })
         load()
         rebuildEntriesFromLayout(scanned: scanned)
+        applySort()
     }
 
     func app(for id: String) -> AppItem? { appIndex[id] }
@@ -113,6 +114,17 @@ final class LaunchModel: ObservableObject {
         hiddenApps.insert(id)
         // also drop from any folder
         removeAppFromFolders(id)
+        save()
+        objectWillChange.send()
+    }
+
+    /// Wipe folders, ordering, renames and hidden state back to defaults.
+    func resetLayout() {
+        customNames.removeAll()
+        hiddenApps.removeAll()
+        loadedLayout = nil
+        entries = apps.map { .app($0.id) }
+        applySort()
         save()
         objectWillChange.send()
     }
@@ -240,7 +252,37 @@ final class LaunchModel: ObservableObject {
     }
 
     private func suggestedFolderName(for ids: [String]) -> String {
-        return "文件夹"
+        return "未命名"
+    }
+
+    // MARK: - Sorting
+
+    /// Re-order the top-level grid according to the current sort mode.
+    /// `custom` keeps the user's saved arrangement.
+    func applySort() {
+        switch settings.sortMode {
+        case 1: // by name
+            entries.sort { sortName($0).localizedCaseInsensitiveCompare(sortName($1)) == .orderedAscending }
+        case 2: // by date added (newest first)
+            entries.sort { sortDate($0) > sortDate($1) }
+        default:
+            return
+        }
+        save()
+    }
+
+    private func sortName(_ e: LaunchEntry) -> String {
+        switch e {
+        case .app(let id): return displayName(for: id)
+        case .folder(let f): return f.name
+        }
+    }
+
+    private func sortDate(_ e: LaunchEntry) -> Double {
+        switch e {
+        case .app(let id): return appIndex[id]?.dateAdded ?? 0
+        case .folder(let f): return f.appIDs.compactMap { appIndex[$0]?.dateAdded }.max() ?? 0
+        }
     }
 
     // MARK: - Persistence

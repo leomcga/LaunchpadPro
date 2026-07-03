@@ -17,6 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)   // menu-bar agent, no Dock icon
 
         overlay = OverlayController(model: model)
+        overlay.onOpenSettings = { [weak self] in self?.openSettings() }
+        overlay.onRescan = { [weak self] in self?.rescan() }
+        overlay.onQuit = { NSApp.terminate(nil) }
         setupStatusItem()
         setupHotKey()
         setupHotCorners()

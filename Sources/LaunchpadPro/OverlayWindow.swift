@@ -15,6 +15,11 @@ final class OverlayController {
     private let model: LaunchModel
     private var localMonitor: Any?
 
+    // Wired by AppDelegate so the in-launcher "…" menu can reach app-level actions.
+    var onOpenSettings: () -> Void = {}
+    var onRescan: () -> Void = {}
+    var onQuit: () -> Void = {}
+
     var isVisible: Bool { panel?.isVisible ?? false }
 
     init(model: LaunchModel) {
@@ -82,7 +87,13 @@ final class OverlayController {
         effect.frame = panel.contentView?.bounds ?? .zero
         effect.autoresizingMask = [.width, .height]
 
-        let root = LauncherRootView(model: model, onDismiss: { [weak self] in self?.hide() })
+        let root = LauncherRootView(
+            model: model,
+            onDismiss: { [weak self] in self?.hide() },
+            onOpenSettings: { [weak self] in self?.hide(); self?.onOpenSettings() },
+            onRescan: { [weak self] in self?.onRescan() },
+            onQuit: { [weak self] in self?.onQuit() }
+        )
         let hosting = NSHostingView(rootView: root)
         hosting.frame = effect.bounds
         hosting.autoresizingMask = [.width, .height]
