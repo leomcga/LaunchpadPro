@@ -1,13 +1,17 @@
 import AppKit
 import SwiftUI
+import Carbon.HIToolbox
+import ServiceManagement
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = LaunchModel()
+    let settings = AppSettings.shared
     private var overlay: OverlayController!
     private var statusItem: NSStatusItem!
     private var globalMouseMonitor: Any?
     private var lastCornerTrigger: Date = .distantPast
+    private var settingsController: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)   // menu-bar agent, no Dock icon
@@ -16,9 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         setupHotKey()
         setupHotCorners()
+        applyLaunchAtLogin()
 
-        // Hidden smoke-test hook: LAUNCHPADPRO_AUTOSHOW=1 opens the overlay so
-        // the render path can be exercised without a hotkey.
+        // Re-register the hotkey whenever the preset changes in Settings.
+        settings.onHotKeyChange = { [weak self] in self?.setupHotKey() }
+
         if ProcessInfo.processInfo.environment["LAUNCHPADPRO_AUTOSHOW"] == "1" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                 self?.overlay.show()
@@ -52,65 +58,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
         menu.addItem(withTitle: "打开启动器", action: #selector(openLauncher), keyEquivalent: "")
+        menu.addItem(withTitle: "设置…", action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
-
-        let vScroll = NSMenuItem(title: "竖向滚动视图", action: #selector(toggleVerticalScroll), keyEquivalent: "")
-        vScroll.state = model.verticalScroll ? .on : .off
-        menu.addItem(vScroll)
-
-        let corners = NSMenuItem(title: "触发角唤起", action: #selector(toggleHotCorners), keyEquivalent: "")
-        corners.state = model.hotCornersEnabled ? .on : .off
-        menu.addItem(corners)
-
         menu.addItem(withTitle: "重新扫描 App", action: #selector(rescan), keyEquivalent: "r")
-        menu.addItem(withTitle: "显示所有隐藏的 App", action: #selector(unhideAll), keyEquivalent: "")
-        menu.addItem(.separator())
-
-        let colMenu = NSMenu()
-        for c in [5, 6, 7, 8, 9] {
-            let it = NSMenuItem(title: "\(c) 列", action: #selector(setColumns(_:)), keyEquivalent: "")
-            it.tag = c
-            it.state = model.columns == c ? .on : .off
-            colMenu.addItem(it)
-        }
-        let colParent = NSMenuItem(title: "每行图标数", action: nil, keyEquivalent: "")
-        menu.setSubmenu(colMenu, for: colParent)
-        menu.addItem(colParent)
-
         menu.addItem(.separator())
         menu.addItem(withTitle: "退出 LaunchpadPro", action: #selector(quit), keyEquivalent: "q")
         for item in menu.items { item.target = self }
-        // targets for submenu
-        for item in colMenu.items { item.target = self }
         return menu
     }
 
     @objc private func openLauncher() { overlay.show() }
     @objc private func rescan() { model.reload() }
-    @objc private func unhideAll() { model.unhideAll() }
     @objc private func quit() { NSApp.terminate(nil) }
 
-    @objc private func toggleVerticalScroll() { model.verticalScroll.toggle() }
-    @objc private func toggleHotCorners() {
-        model.hotCornersEnabled.toggle()
-        setupHotCorners()
+    @objc private func openSettings() {
+        if settingsController == nil {
+            settingsController = SettingsWindowController(model: model,
+                                                          onHotCornersChanged: { [weak self] in self?.setupHotCorners() },
+                                                          onLaunchAtLoginChanged: { [weak self] in self?.applyLaunchAtLogin() })
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        settingsController?.showWindow(nil)
+        settingsController?.window?.makeKeyAndOrderFront(nil)
     }
-    @objc private func setColumns(_ sender: NSMenuItem) { model.columns = sender.tag }
 
-    // MARK: - Global hotkey (⌥Space)
+    // MARK: - Global hotkey (configurable preset)
 
     private func setupHotKey() {
-        HotKeyManager.shared.register(keyCode: HotKeyDefaults.optionSpace.keyCode,
-                                      modifiers: HotKeyDefaults.optionSpace.modifiers) { [weak self] in
+        let (keyCode, mods) = hotKeyCombo(for: HotKeyPreset(rawValue: settings.hotKey) ?? .optionSpace)
+        HotKeyManager.shared.register(keyCode: keyCode, modifiers: mods) { [weak self] in
             self?.overlay.toggle()
         }
     }
 
-    // MARK: - Hot corners (Pro)
+    private func hotKeyCombo(for preset: HotKeyPreset) -> (UInt32, UInt32) {
+        switch preset {
+        case .optionSpace:        return (UInt32(kVK_Space), UInt32(optionKey))
+        case .controlSpace:       return (UInt32(kVK_Space), UInt32(controlKey))
+        case .commandOptionSpace: return (UInt32(kVK_Space), UInt32(cmdKey | optionKey))
+        case .f4:                 return (UInt32(kVK_F4), 0)
+        }
+    }
+
+    // MARK: - Launch at login
+
+    private func applyLaunchAtLogin() {
+        do {
+            if settings.launchAtLogin {
+                if SMAppService.mainApp.status != .enabled { try SMAppService.mainApp.register() }
+            } else {
+                if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
+            }
+        } catch {
+            // Registration can fail for unsigned/dev builds; the login-item that
+            // was added manually still covers auto-start, so ignore.
+        }
+    }
+
+    // MARK: - Hot corners
 
     private func setupHotCorners() {
         if let m = globalMouseMonitor { NSEvent.removeMonitor(m); globalMouseMonitor = nil }
-        guard model.hotCornersEnabled else { return }
+        guard settings.hotCornersEnabled else { return }
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in
             self?.checkHotCorner()
         }
@@ -121,19 +130,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let frame = screen.frame
         let loc = NSEvent.mouseLocation
         let margin: CGFloat = 3
-        let corner = model.hotCorner
         var hit = false
-        switch corner {
-        case 0: hit = loc.x <= frame.minX + margin && loc.y >= frame.maxY - margin   // top-left
-        case 1: hit = loc.x >= frame.maxX - margin && loc.y >= frame.maxY - margin   // top-right
-        case 2: hit = loc.x <= frame.minX + margin && loc.y <= frame.minY + margin   // bottom-left
-        default: hit = loc.x >= frame.maxX - margin && loc.y <= frame.minY + margin  // bottom-right
+        switch settings.hotCorner {
+        case 0: hit = loc.x <= frame.minX + margin && loc.y >= frame.maxY - margin
+        case 1: hit = loc.x >= frame.maxX - margin && loc.y >= frame.maxY - margin
+        case 2: hit = loc.x <= frame.minX + margin && loc.y <= frame.minY + margin
+        default: hit = loc.x >= frame.maxX - margin && loc.y <= frame.minY + margin
         }
-        if hit {
-            if Date().timeIntervalSince(lastCornerTrigger) > 1.2 {
-                lastCornerTrigger = Date()
-                if !overlay.isVisible { overlay.show() }
-            }
+        if hit, Date().timeIntervalSince(lastCornerTrigger) > 1.2 {
+            lastCornerTrigger = Date()
+            if !overlay.isVisible { overlay.show() }
         }
     }
 }

@@ -6,40 +6,46 @@ import UniformTypeIdentifiers
 
 struct LauncherRootView: View {
     @ObservedObject var model: LaunchModel
+    @ObservedObject var settings = AppSettings.shared
     var onDismiss: () -> Void
 
     @FocusState private var searchFocused: Bool
+    @State private var appeared = false
 
     var body: some View {
         ZStack {
-            VisualEffectBackground(material: .fullScreenUI)
+            // The frosted blur itself lives on the window (single continuous
+            // layer -> no seam between pages). Here we only add a uniform dim
+            // for text legibility, and catch taps on empty space to dismiss.
+            Color.black.opacity(settings.backgroundDim)
                 .ignoresSafeArea()
-                .overlay(Color.black.opacity(0.18).ignoresSafeArea())
-                // click on empty backdrop dismisses
                 .contentShape(Rectangle())
                 .onTapGesture { onDismiss() }
 
-            VStack(spacing: 22) {
+            VStack(spacing: 26) {
                 SearchField(text: $model.searchText, focused: $searchFocused)
-                    .frame(maxWidth: 520)
-                    .padding(.top, 40)
+                    .frame(width: 460)
+                    .padding(.top, 34)
 
                 GridContainer(model: model, onLaunch: { id in
-                    model.launch(id)
-                    onDismiss()
+                    model.launch(id); onDismiss()
                 })
-                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 60)
+            .padding(.horizontal, 44)
+            .padding(.bottom, 24)
+            .scaleEffect(appeared ? 1 : 1.05)
+            .opacity(appeared ? 1 : 0)
 
-            if let fid = model.openFolderID,
-               let folder = currentFolder(fid) {
+            if let fid = model.openFolderID, let folder = currentFolder(fid) {
                 FolderOverlay(model: model, folder: folder, onLaunch: { id in
                     model.launch(id); onDismiss()
                 })
             }
         }
-        .onAppear { DispatchQueue.main.async { searchFocused = true } }
+        .onAppear {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) { appeared = true }
+            DispatchQueue.main.async { searchFocused = true }
+        }
     }
 
     private func currentFolder(_ id: String) -> Folder? {
@@ -57,10 +63,11 @@ struct SearchField: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.white.opacity(0.7))
             TextField("搜索", text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 18))
+                .font(.system(size: 16))
                 .foregroundStyle(.white)
                 .focused(focused)
             if !text.isEmpty {
@@ -70,10 +77,11 @@ struct SearchField: View {
                 }.buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 15)
+        .padding(.vertical, 9)
         .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(.white.opacity(0.15), lineWidth: 1))
+        .overlay(Capsule().stroke(.white.opacity(0.18), lineWidth: 1))
+        .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
     }
 }
 
@@ -81,24 +89,26 @@ struct SearchField: View {
 
 struct GridContainer: View {
     @ObservedObject var model: LaunchModel
+    @ObservedObject var settings = AppSettings.shared
     var onLaunch: (String) -> Void
 
     var body: some View {
         let entries = model.displayEntries
-        let columns = model.columns
+        let columns = settings.columns
         let searchActive = !model.searchText.trimmingCharacters(in: .whitespaces).isEmpty
 
         GeometryReader { geo in
             let cell = cellSize(in: geo.size, columns: columns)
-            if model.verticalScroll || searchActive {
+            if settings.verticalScroll || searchActive {
                 ScrollView(.vertical, showsIndicators: false) {
-                    LazyVGrid(columns: gridColumns(columns), spacing: 26) {
+                    LazyVGrid(columns: gridColumns(columns), spacing: 30) {
                         ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                             EntryCell(model: model, entry: entry, index: index,
                                       cell: cell, draggable: !searchActive, onLaunch: onLaunch)
                         }
                     }
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity)
                 }
             } else {
                 PagedGrid(model: model, entries: entries, columns: columns,
@@ -108,12 +118,12 @@ struct GridContainer: View {
     }
 
     private func gridColumns(_ n: Int) -> [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 18), count: n)
+        Array(repeating: GridItem(.flexible(), spacing: 22), count: n)
     }
 
     private func cellSize(in size: CGSize, columns: Int) -> CGSize {
-        let w = max(90, (size.width - CGFloat(columns - 1) * 18) / CGFloat(columns))
-        return CGSize(width: w, height: model.iconSize + 44)
+        let w = max(96, (size.width - CGFloat(columns - 1) * 22) / CGFloat(columns))
+        return CGSize(width: w, height: settings.iconSize + (settings.showLabels ? 40 : 12))
     }
 }
 
@@ -121,6 +131,7 @@ struct GridContainer: View {
 
 struct PagedGrid: View {
     @ObservedObject var model: LaunchModel
+    @ObservedObject var settings = AppSettings.shared
     let entries: [LaunchEntry]
     let columns: Int
     let cell: CGSize
@@ -129,29 +140,34 @@ struct PagedGrid: View {
 
     @State private var page = 0
 
-    var perPage: Int { max(1, columns * model.rows) }
+    var perPage: Int { max(1, columns * settings.rows) }
 
     var pages: [[(Int, LaunchEntry)]] {
         let indexed = Array(entries.enumerated()).map { ($0.offset, $0.element) }
-        return stride(from: 0, to: indexed.count, by: perPage).map {
+        let chunks = stride(from: 0, to: indexed.count, by: perPage).map {
             Array(indexed[$0 ..< min($0 + perPage, indexed.count)])
         }
+        return chunks.isEmpty ? [[]] : chunks
     }
 
     var body: some View {
         let pageList = pages
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 0) {
                     ForEach(Array(pageList.enumerated()), id: \.offset) { pIndex, pageEntries in
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: columns), spacing: 26) {
-                            ForEach(pageEntries, id: \.1.id) { index, entry in
-                                EntryCell(model: model, entry: entry, index: index,
-                                          cell: cell, draggable: true, onLaunch: onLaunch)
+                        VStack {
+                            Spacer(minLength: 0)
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 22), count: columns), spacing: 30) {
+                                ForEach(pageEntries, id: \.1.id) { index, entry in
+                                    EntryCell(model: model, entry: entry, index: index,
+                                              cell: cell, draggable: true, onLaunch: onLaunch)
+                                }
                             }
+                            Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 8)
-                        .frame(width: size.width, alignment: .top)
+                        .padding(.horizontal, 10)
+                        .frame(width: size.width)
                         .id(pIndex)
                     }
                 }
@@ -161,15 +177,15 @@ struct PagedGrid: View {
             .scrollPosition(id: pageBinding)
 
             if pageList.count > 1 {
-                HStack(spacing: 9) {
+                HStack(spacing: 10) {
                     ForEach(0..<pageList.count, id: \.self) { i in
                         Circle()
-                            .fill(Color.white.opacity(i == page ? 0.9 : 0.32))
-                            .frame(width: 8, height: 8)
-                            .onTapGesture { withAnimation { page = i } }
+                            .fill(Color.white.opacity(i == page ? 0.95 : 0.35))
+                            .frame(width: 7, height: 7)
+                            .onTapGesture { withAnimation(.easeInOut) { page = i } }
                     }
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, 8)
             }
         }
     }
@@ -189,17 +205,24 @@ struct EntryCell: View {
     var draggable: Bool
     var onLaunch: (String) -> Void
 
+    @State private var dropTargeted = false
+
     var body: some View {
         Group {
             switch entry {
             case .app(let id):
-                AppIcon(model: model, appID: id, size: model.iconSize, onLaunch: onLaunch)
+                AppIcon(model: model, appID: id, onLaunch: onLaunch)
             case .folder(let folder):
-                FolderIcon(model: model, folder: folder, size: model.iconSize)
+                FolderIcon(model: model, folder: folder)
             }
         }
         .frame(width: cell.width, height: cell.height)
-        .modifier(DragReorder(model: model, entry: entry, index: index, enabled: draggable))
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white.opacity(dropTargeted ? 0.16 : 0))
+        )
+        .modifier(DragReorder(model: model, entry: entry, cellWidth: cell.width,
+                              enabled: draggable, targeted: $dropTargeted))
     }
 }
 
@@ -208,16 +231,17 @@ struct EntryCell: View {
 struct DragReorder: ViewModifier {
     @ObservedObject var model: LaunchModel
     let entry: LaunchEntry
-    let index: Int
+    let cellWidth: CGFloat
     let enabled: Bool
+    @Binding var targeted: Bool
 
     func body(content: Content) -> some View {
         if enabled {
             content
-                .onDrag {
-                    NSItemProvider(object: entry.id as NSString)
-                }
-                .onDrop(of: [UTType.text], delegate: EntryDropDelegate(model: model, target: entry, targetIndex: index))
+                .onDrag { NSItemProvider(object: entry.id as NSString) }
+                .onDrop(of: [UTType.text],
+                        delegate: EntryDropDelegate(model: model, target: entry,
+                                                    cellWidth: cellWidth, targeted: $targeted))
         } else {
             content
         }
@@ -227,52 +251,49 @@ struct DragReorder: ViewModifier {
 struct EntryDropDelegate: DropDelegate {
     let model: LaunchModel
     let target: LaunchEntry
-    let targetIndex: Int
+    let cellWidth: CGFloat
+    @Binding var targeted: Bool
+
+    func dropEntered(info: DropInfo) { targeted = true }
+    func dropExited(info: DropInfo) { targeted = false }
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
 
     func performDrop(info: DropInfo) -> Bool {
+        targeted = false
         guard let provider = info.itemProviders(for: [UTType.text]).first else { return false }
+        // Center third of the icon => combine into a folder. Left/right thirds
+        // => reorder before/after (mirrors Launchpad's edge-vs-center behavior).
+        let x = info.location.x
+        let combineZone = x > cellWidth * 0.3 && x < cellWidth * 0.7
+        let dropAfter = x >= cellWidth * 0.7
+
         provider.loadObject(ofClass: NSString.self) { obj, _ in
             guard let draggedID = obj as? String, draggedID != target.id else { return }
             DispatchQueue.main.async {
-                // Decide: reorder vs combine into folder.
-                switch target {
-                case .app:
-                    // dropping an app on an app -> folder
-                    model.combine(draggedEntryID: draggedID, ontoIndex: currentIndex())
-                case .folder:
-                    if draggedID.hasPrefix("app:") {
-                        let appID = String(draggedID.dropFirst(4))
-                        if case .folder(let f) = target {
-                            model.addToFolder(appID: appID, folderID: f.id)
-                        }
-                    } else {
-                        reorder(draggedID: draggedID)
-                    }
+                let targetIndex = model.entries.firstIndex(where: { $0.id == target.id }) ?? 0
+
+                if combineZone, case .app = target {
+                    model.combine(draggedEntryID: draggedID, ontoIndex: targetIndex)
+                } else if combineZone, case .folder(let f) = target, draggedID.hasPrefix("app:") {
+                    model.addToFolder(appID: String(draggedID.dropFirst(4)), folderID: f.id)
+                } else {
+                    guard let from = model.entries.firstIndex(where: { $0.id == draggedID }) else { return }
+                    var to = model.entries.firstIndex(where: { $0.id == target.id }) ?? from
+                    if dropAfter { to += 1 }
+                    model.moveEntry(from: from, to: to)
                 }
             }
         }
         return true
     }
-
-    private func currentIndex() -> Int {
-        model.entries.firstIndex(where: { $0.id == target.id }) ?? targetIndex
-    }
-
-    private func reorder(draggedID: String) {
-        guard let from = model.entries.firstIndex(where: { $0.id == draggedID }) else { return }
-        let to = currentIndex()
-        model.moveEntry(from: from, to: to)
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
 }
 
 // MARK: - App icon
 
 struct AppIcon: View {
     @ObservedObject var model: LaunchModel
+    @ObservedObject var settings = AppSettings.shared
     let appID: String
-    let size: Double
     var onLaunch: (String) -> Void
 
     @State private var hovering = false
@@ -285,28 +306,30 @@ struct AppIcon: View {
                 Image(nsImage: AppScanner.icon(for: item))
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: size, height: size)
-                    .scaleEffect(hovering ? 1.06 : 1.0)
+                    .frame(width: settings.iconSize, height: settings.iconSize)
+                    .scaleEffect(hovering ? 1.08 : 1.0)
                     .animation(.spring(response: 0.25, dampingFraction: 0.7), value: hovering)
-                    .shadow(color: .black.opacity(0.25), radius: 5, y: 3)
+                    .shadow(color: .black.opacity(0.28), radius: 6, y: 4)
             }
-            if renaming {
-                TextField("", text: $draft, onCommit: commitRename)
-                    .textFieldStyle(.plain)
-                    .multilineTextAlignment(.center)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white)
-                    .frame(width: size + 24)
-                    .padding(2)
-                    .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
-            } else {
-                Text(model.displayName(for: appID))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(width: size + 30)
-                    .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
+            if settings.showLabels {
+                if renaming {
+                    TextField("", text: $draft, onCommit: commitRename)
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white)
+                        .frame(width: settings.iconSize + 30)
+                        .padding(.horizontal, 4).padding(.vertical, 2)
+                        .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 5))
+                } else {
+                    Text(model.displayName(for: appID))
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: settings.iconSize + 34)
+                        .shadow(color: .black.opacity(0.6), radius: 3, y: 1)
+                }
             }
         }
         .contentShape(Rectangle())
@@ -317,19 +340,14 @@ struct AppIcon: View {
 
     @ViewBuilder private var contextMenu: some View {
         Button("打开") { onLaunch(appID) }
-        Button("重命名…") {
-            draft = model.displayName(for: appID); renaming = true
-        }
+        Button("重命名…") { draft = model.displayName(for: appID); renaming = true }
         Button("在访达中显示") { model.revealInFinder(appID) }
         Divider()
         Button("隐藏此 App") { model.hide(appID) }
         Button("卸载（移到废纸篓）", role: .destructive) { confirmUninstall() }
     }
 
-    private func commitRename() {
-        model.rename(appID, to: draft)
-        renaming = false
-    }
+    private func commitRename() { model.rename(appID, to: draft); renaming = false }
 
     private func confirmUninstall() {
         let alert = NSAlert()
@@ -338,9 +356,7 @@ struct AppIcon: View {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "移到废纸篓")
         alert.addButton(withTitle: "取消")
-        if alert.runModal() == .alertFirstButtonReturn {
-            model.uninstall(appID)
-        }
+        if alert.runModal() == .alertFirstButtonReturn { model.uninstall(appID) }
     }
 }
 
@@ -348,41 +364,42 @@ struct AppIcon: View {
 
 struct FolderIcon: View {
     @ObservedObject var model: LaunchModel
+    @ObservedObject var settings = AppSettings.shared
     let folder: Folder
-    let size: Double
 
     var body: some View {
+        let size = settings.iconSize
         VStack(spacing: 7) {
             ZStack {
-                RoundedRectangle(cornerRadius: size * 0.22)
-                    .fill(.white.opacity(0.18))
+                RoundedRectangle(cornerRadius: size * 0.23)
+                    .fill(.white.opacity(0.16))
                     .frame(width: size, height: size)
-                    .overlay(RoundedRectangle(cornerRadius: size * 0.22).stroke(.white.opacity(0.15)))
+                    .overlay(RoundedRectangle(cornerRadius: size * 0.23).stroke(.white.opacity(0.18)))
+                    .shadow(color: .black.opacity(0.22), radius: 5, y: 3)
 
                 let previews = model.appsInFolder(folder).prefix(9)
-                let mini = size * 0.24
+                let mini = size * 0.235
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(mini), spacing: size * 0.05), count: 3),
                           spacing: size * 0.05) {
                     ForEach(Array(previews), id: \.id) { app in
                         Image(nsImage: AppScanner.icon(for: app))
-                            .resizable()
-                            .frame(width: mini, height: mini)
+                            .resizable().frame(width: mini, height: mini)
                     }
                 }
-                .frame(width: size * 0.82, height: size * 0.82)
+                .frame(width: size * 0.8, height: size * 0.8)
             }
-            Text(folder.name)
-                .font(.system(size: 12))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .frame(width: size + 30)
-                .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
+            if settings.showLabels {
+                Text(folder.name)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .frame(maxWidth: size + 34)
+                    .shadow(color: .black.opacity(0.6), radius: 3, y: 1)
+            }
         }
         .contentShape(Rectangle())
-        .onTapGesture { model.openFolderID = folder.id }
-        .contextMenu {
-            Button("重命名文件夹…") { renameFolder() }
-        }
+        .onTapGesture { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { model.openFolderID = folder.id } }
+        .contextMenu { Button("重命名文件夹…") { renameFolder() } }
     }
 
     private func renameFolder() {
@@ -401,23 +418,25 @@ struct FolderIcon: View {
 
 struct FolderOverlay: View {
     @ObservedObject var model: LaunchModel
+    @ObservedObject var settings = AppSettings.shared
     let folder: Folder
     var onLaunch: (String) -> Void
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.35).ignoresSafeArea()
+            Color.black.opacity(0.4).ignoresSafeArea()
                 .onTapGesture { model.openFolderID = nil }
 
-            VStack(spacing: 18) {
+            VStack(spacing: 20) {
                 Text(folder.name)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.white)
 
                 let apps = model.appsInFolder(folder)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 20), count: min(6, max(1, apps.count))), spacing: 24) {
+                let cols = min(6, max(1, apps.count))
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 24), count: cols), spacing: 26) {
                     ForEach(apps, id: \.id) { app in
-                        AppIcon(model: model, appID: app.id, size: model.iconSize, onLaunch: onLaunch)
+                        AppIcon(model: model, appID: app.id, onLaunch: onLaunch)
                             .contextMenu {
                                 Button("打开") { onLaunch(app.id) }
                                 Button("移出文件夹") {
@@ -427,13 +446,14 @@ struct FolderOverlay: View {
                             }
                     }
                 }
-                .padding(30)
+                .padding(34)
             }
-            .padding(40)
-            .frame(maxWidth: 900)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28))
-            .overlay(RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.12)))
+            .padding(44)
+            .frame(maxWidth: 940)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30))
+            .overlay(RoundedRectangle(cornerRadius: 30).stroke(.white.opacity(0.14)))
+            .shadow(color: .black.opacity(0.4), radius: 30, y: 12)
+            .transition(.scale(scale: 0.92).combined(with: .opacity))
         }
-        .transition(.opacity)
     }
 }

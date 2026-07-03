@@ -73,11 +73,24 @@ final class OverlayController {
         panel.isMovable = false
         panel.hidesOnDeactivate = false
 
+        // A single window-level frost so all pages slide over one continuous
+        // blurred layer (no seam between pages during transitions).
+        let effect = NSVisualEffectView()
+        effect.material = .fullScreenUI
+        effect.blendingMode = .behindWindow
+        effect.state = .active
+        effect.frame = panel.contentView?.bounds ?? .zero
+        effect.autoresizingMask = [.width, .height]
+
         let root = LauncherRootView(model: model, onDismiss: { [weak self] in self?.hide() })
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = panel.contentView?.bounds ?? .zero
+        hosting.frame = effect.bounds
         hosting.autoresizingMask = [.width, .height]
-        panel.contentView = hosting
+        // Keep the hosting view transparent so the frost shows through.
+        hosting.layer?.backgroundColor = .clear
+
+        effect.addSubview(hosting)
+        panel.contentView = effect
         return panel
     }
 

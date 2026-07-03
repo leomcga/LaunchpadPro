@@ -19,13 +19,8 @@ final class LaunchModel: ObservableObject {
 
     private var appIndex: [String: AppItem] = [:]
 
-    // MARK: - Preferences (Pro features, all enabled for personal build)
-    @AppStorage("verticalScroll") var verticalScroll: Bool = false
-    @AppStorage("columns") var columns: Int = 7
-    @AppStorage("rows") var rows: Int = 5
-    @AppStorage("hotCornersEnabled") var hotCornersEnabled: Bool = false
-    @AppStorage("hotCorner") var hotCorner: Int = 3   // 0=TL 1=TR 2=BL 3=BR
-    @AppStorage("iconSize") var iconSize: Double = 96
+    /// Shared tunable settings (grid size, hotkey, corners, appearance).
+    let settings = AppSettings.shared
 
     init() {
         reload()
@@ -118,6 +113,15 @@ final class LaunchModel: ObservableObject {
         hiddenApps.insert(id)
         // also drop from any folder
         removeAppFromFolders(id)
+        save()
+        objectWillChange.send()
+    }
+
+    func unhide(_ id: String) {
+        hiddenApps.remove(id)
+        if !entries.contains(where: { if case .app(let a) = $0 { return a == id } else { return false } }) {
+            entries.append(.app(id))
+        }
         save()
         objectWillChange.send()
     }
