@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Launchpad logo">
+  <defs>
+    <linearGradient id="bg" x1="140" y1="92" x2="874" y2="930" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F6FAFF"/>
+      <stop offset="0.5" stop-color="#DCEAFF"/>
+      <stop offset="1" stop-color="#9DBFFF"/>
+    </linearGradient>
+
+    <radialGradient id="coreGlow" cx="50%" cy="48%" r="46%">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/>
+      <stop offset="0.44" stop-color="#6EA8FF" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#9DBFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="mark" x1="426" y1="228" x2="608" y2="790" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#F5FAFF"/>
+      <stop offset="1" stop-color="#F5E8CF"/>
+    </linearGradient>
+
+    <linearGradient id="accent" x1="512" y1="600" x2="512" y2="816" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF4C7"/>
+      <stop offset="0.44" stop-color="#FFB15C"/>
+      <stop offset="0.78" stop-color="#FF7A45"/>
+      <stop offset="1" stop-color="#2F6FFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="markShadow" x="-24%" y="-24%" width="148%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#4D78BA" flood-opacity="0.28"/>
+    </filter>
+
+    <filter id="blur" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="512" cy="494" r="430" fill="url(#coreGlow)"/>
+
+  <g opacity="0.18" fill="none" stroke="#3D73D8" stroke-width="2">
+    <circle cx="512" cy="512" r="298"/>
+    <path d="M216 512H334M690 512H808M512 216V334M512 690V808"/>
+  </g>
+
+  <g opacity="0.3" fill="#FFFFFF">
+    <rect x="256" y="256" width="72" height="72" rx="18"/>
+    <rect x="696" y="256" width="72" height="72" rx="18"/>
+    <rect x="256" y="696" width="72" height="72" rx="18"/>
+    <rect x="696" y="696" width="72" height="72" rx="18"/>
+  </g>
+
+  <g filter="url(#blur)" opacity="0.52">
+    <ellipse cx="512" cy="718" rx="88" ry="144" fill="#FFB15C"/>
+    <ellipse cx="512" cy="742" rx="42" ry="96" fill="#FF7A45"/>
+  </g>
+
+  <g filter="url(#markShadow)">
+    <path d="M512 204C462 204 424 330 424 482C424 592 456 674 512 740C568 674 600 592 600 482C600 330 562 204 512 204Z" fill="url(#mark)"/>
+    <path d="M512 204C482 204 456 252 442 346C484 323 540 323 582 346C568 252 542 204 512 204Z" fill="#FFEFC2"/>
+    <circle cx="512" cy="456" r="62" fill="#16448E" stroke="#FFFFFF" stroke-width="10"/>
+    <circle cx="512" cy="456" r="28" fill="#9DCAFF"/>
+    <path d="M468 646C482 674 496 726 512 802C528 726 542 674 556 646C532 656 492 656 468 646Z" fill="url(#accent)"/>
+    <path d="M424 558C392 606 364 662 340 726C335 739 350 750 360 740C395 705 430 676 465 654C447 626 434 594 424 558Z" fill="#FFE0AA"/>
+    <path d="M600 558C632 606 660 662 684 726C689 739 674 750 664 740C629 705 594 676 559 654C577 626 590 594 600 558Z" fill="#FFE0AA"/>
+  </g>
+
+  <path d="M328 876C420 842 606 842 696 876" fill="none" stroke="#376EFF" stroke-width="6" stroke-linecap="round" opacity="0.2"/>
+</svg>
