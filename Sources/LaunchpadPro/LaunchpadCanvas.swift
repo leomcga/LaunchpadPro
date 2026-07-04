@@ -88,6 +88,7 @@ struct LaunchpadCanvas: View {
 
             if let fid = model.openFolderID, let folder = currentFolder(fid) {
                 folderLayer(folder)
+                    .zIndex(200)   // above the grid items (which carry zIndex 1)
             }
         }
         .frame(width: size.width, height: size.height)
