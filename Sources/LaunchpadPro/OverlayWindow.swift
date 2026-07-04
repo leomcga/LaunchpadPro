@@ -16,6 +16,7 @@ final class OverlayController {
     private var localMonitor: Any?
     private var scrollAccum: CGFloat = 0
     private var lastPageFlip: Date = .distantPast
+    private var swipeHorizontal = false
 
     // Wired by AppDelegate so the in-launcher "…" menu can reach app-level actions.
     var onOpenSettings: () -> Void = {}
@@ -134,24 +135,39 @@ final class OverlayController {
         if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
     }
 
-    /// Trackpad two-finger / mouse wheel horizontal scroll flips pages.
+    /// Trackpad two-finger swipe = continuous finger-following paging.
+    /// Mouse wheel (no gesture phase) = discrete page flips.
     private func handleScroll(_ event: NSEvent) {
         guard model.openFolderID == nil, !model.settings.verticalScroll else { return }
         let dx = event.scrollingDeltaX
         let dy = event.scrollingDeltaY
-        // Only react to a predominantly horizontal gesture.
+        let hasPhase = !event.phase.isEmpty || !event.momentumPhase.isEmpty
+
+        if hasPhase {
+            // Trackpad: forward live horizontal deltas while fingers are down,
+            // then signal the end so the grid snaps to the nearest page.
+            if event.phase.contains(.began) {
+                swipeHorizontal = false
+            }
+            if event.phase.contains(.changed) {
+                if !swipeHorizontal && abs(dx) > abs(dy) { swipeHorizontal = true }
+                if swipeHorizontal { LauncherBus.shared.liveScroll(dx) }
+            }
+            if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+                if swipeHorizontal { LauncherBus.shared.endScroll() }
+                swipeHorizontal = false
+            }
+            return
+        }
+
+        // Mouse wheel: discrete threshold flips.
         guard abs(dx) > abs(dy) else { scrollAccum = 0; return }
-
         scrollAccum += dx
-        let threshold: CGFloat = 40
-        guard Date().timeIntervalSince(lastPageFlip) > 0.35 else { return }
-
-        if scrollAccum <= -threshold {
-            LauncherBus.shared.requestNextPage()
-            scrollAccum = 0; lastPageFlip = Date()
-        } else if scrollAccum >= threshold {
-            LauncherBus.shared.requestPrevPage()
-            scrollAccum = 0; lastPageFlip = Date()
+        guard Date().timeIntervalSince(lastPageFlip) > 0.3 else { return }
+        if scrollAccum <= -40 {
+            LauncherBus.shared.requestNextPage(); scrollAccum = 0; lastPageFlip = Date()
+        } else if scrollAccum >= 40 {
+            LauncherBus.shared.requestPrevPage(); scrollAccum = 0; lastPageFlip = Date()
         }
     }
 }

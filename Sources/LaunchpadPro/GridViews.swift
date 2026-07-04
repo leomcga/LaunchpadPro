@@ -12,6 +12,9 @@ struct CellFramePreference: PreferenceKey {
 
 private let launcherSpace = "launcher"
 private let folderSpace = "folder"
+/// Side margin inside each full-width page so icons don't touch the screen edge
+/// while pages still slide edge-to-edge.
+private let gridSidePad: CGFloat = 52
 
 // MARK: - Root
 
@@ -48,7 +51,6 @@ struct LauncherRootView: View {
                               onDismiss: onDismiss)
             }
             .padding(.top, topInset)
-            .padding(.horizontal, 60)
             .padding(.bottom, 20)
             .scaleEffect(appeared ? 1 : 1.04)
             .opacity(appeared ? 1 : 0)
@@ -164,6 +166,7 @@ struct GridContainer: View {
                             }
                         }
                         .padding(.top, 8).padding(.bottom, 16)
+                        .padding(.horizontal, gridSidePad)
                         .frame(maxWidth: .infinity, alignment: .top)
                     }
                 }
@@ -179,7 +182,8 @@ struct GridContainer: View {
     }
 
     private func cellSize(in size: CGSize, columns: Int) -> CGSize {
-        let w = max(70, (size.width - CGFloat(columns - 1) * 16) / CGFloat(columns))
+        let usable = size.width - 2 * gridSidePad - CGFloat(columns - 1) * 16
+        let w = max(70, usable / CGFloat(columns))
         return CGSize(width: w, height: settings.iconSize + (settings.showLabels ? 34 : 10))
     }
 }
@@ -201,6 +205,7 @@ struct PagedGrid: View {
     @State private var draggingID: String? = nil
     @State private var dragLocation: CGPoint = .zero
     @State private var cellFrames: [String: CGRect] = [:]
+    @State private var pageDragOffset: CGFloat = 0
 
     var perPage: Int { max(1, columns * settings.rows) }
 
@@ -234,14 +239,14 @@ struct PagedGrid: View {
                                                   onDragEnded: { loc, _ in handleDrop(entry.id, at: loc) })
                                     }
                                 }
+                                .padding(.horizontal, gridSidePad)
                                 Spacer(minLength: 0)
                             }
                             .padding(.top, 8)
                             .frame(width: w, alignment: .top)
                         }
                     }
-                    .offset(x: -CGFloat(clamped) * w)
-                    .animation(.spring(response: 0.32, dampingFraction: 0.9), value: clamped)
+                    .offset(x: -CGFloat(clamped) * w + pageDragOffset)
                 }
                 .frame(width: w)
                 .clipped()
@@ -272,9 +277,29 @@ struct PagedGrid: View {
         }
         .coordinateSpace(name: launcherSpace)
         .onPreferenceChange(CellFramePreference.self) { cellFrames = $0 }
-        .onChange(of: bus.nextPageTick) { _, _ in page = min(clamped + 1, max(0, pageList.count - 1)) }
-        .onChange(of: bus.prevPageTick) { _, _ in page = max(clamped - 1, 0) }
+        .onChange(of: bus.nextPageTick) { _, _ in
+            withAnimation(pageSpring) { page = min(clamped + 1, max(0, pageList.count - 1)) }
+        }
+        .onChange(of: bus.prevPageTick) { _, _ in
+            withAnimation(pageSpring) { page = max(clamped - 1, 0) }
+        }
+        .onChange(of: bus.scrollTick) { _, _ in
+            // Follow the fingers; add resistance past the first/last page.
+            var off = pageDragOffset + bus.scrollDX
+            if clamped == 0 && off > 0 { off = off * 0.35 }
+            if clamped >= pageList.count - 1 && off < 0 { off = off * 0.35 }
+            pageDragOffset = off
+        }
+        .onChange(of: bus.scrollEndTick) { _, _ in
+            let d = pageDragOffset
+            var newPage = clamped
+            if d <= -w * 0.2 { newPage = min(clamped + 1, pageList.count - 1) }
+            else if d >= w * 0.2 { newPage = max(clamped - 1, 0) }
+            withAnimation(pageSpring) { page = newPage; pageDragOffset = 0 }
+        }
     }
+
+    private let pageSpring = Animation.spring(response: 0.34, dampingFraction: 0.86)
 
     private func entryFor(_ id: String) -> LaunchEntry? {
         model.entries.first { $0.id == id }
