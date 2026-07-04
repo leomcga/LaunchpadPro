@@ -22,6 +22,13 @@ struct LaunchpadCanvas: View {
     @State private var swipeOffset: CGFloat = 0
     @State private var lastEdgeFlip = Date.distantPast
 
+    // Open-folder state (rendered in the same coordinate space as the grid so a
+    // dragged-out app lands exactly where it's released).
+    @State private var folderDragID: String? = nil
+    @State private var folderDragPoint: CGPoint = .zero
+    @State private var folderEjecting = false
+    @State private var folderCellFrames: [String: CGRect] = [:]
+
     private let side: CGFloat = 46
     private let gapX: CGFloat = 16
     private let gapY: CGFloat = 20
@@ -66,6 +73,10 @@ struct LaunchpadCanvas: View {
                     }
                 }
                 .position(x: size.width / 2, y: size.height - 14)
+            }
+
+            if let fid = model.openFolderID, let folder = currentFolder(fid) {
+                folderLayer(folder)
             }
         }
         .frame(width: size.width, height: size.height)
@@ -195,5 +206,117 @@ struct LaunchpadCanvas: View {
         } else {
             model.setDisplayOrder(order)
         }
+    }
+
+    // MARK: - In-canvas folder
+
+    private func currentFolder(_ id: String) -> Folder? {
+        for e in model.entries { if case .folder(let f) = e, f.id == id { return f } }
+        return nil
+    }
+
+    @ViewBuilder private func folderLayer(_ folder: Folder) -> some View {
+        let apps = model.appsInFolder(folder)
+        let fIcon = min(settings.iconSize, 84)
+        let fCellW = fIcon + 24
+        let fCellH = fIcon + 34
+        let fCols = min(5, max(1, apps.count))
+
+        ZStack {
+            Color.black.opacity(folderEjecting ? 0.1 : 0.42)
+                .contentShape(Rectangle())
+                .onTapGesture { closeFolder() }
+                .animation(.easeOut(duration: 0.2), value: folderEjecting)
+
+            VStack(spacing: 16) {
+                Text(folder.name)
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(.primary)
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(fCellW), spacing: 18), count: fCols), spacing: 18) {
+                    ForEach(apps, id: \.id) { app in
+                        folderAppCell(app: app, folder: folder, cellW: fCellW, cellH: fCellH)
+                    }
+                }
+            }
+            .padding(32)
+            .frame(maxWidth: CGFloat(5) * (fCellW + 18) + 64)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(.white.opacity(0.14)))
+            .shadow(color: .black.opacity(0.4), radius: 30, y: 12)
+            .opacity(folderEjecting ? 0 : 1)
+            .scaleEffect(folderEjecting ? 0.94 : 1)
+            .animation(.easeOut(duration: 0.2), value: folderEjecting)
+
+            if let fd = folderDragID, let app = model.app(for: fd) {
+                AppIcon(model: model, appID: app.id, onLaunch: { _ in })
+                    .frame(width: fCellW, height: fCellH)
+                    .scaleEffect(1.16)
+                    .shadow(color: .black.opacity(0.45), radius: 16, y: 8)
+                    .position(folderDragPoint)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onPreferenceChange(CellFramePreference.self) { folderCellFrames = $0 }
+    }
+
+    private func folderAppCell(app: AppItem, folder: Folder, cellW: CGFloat, cellH: CGFloat) -> some View {
+        AppIcon(model: model, appID: app.id, onLaunch: onLaunch)
+            .frame(width: cellW, height: cellH)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: CellFramePreference.self,
+                                           value: ["app:" + app.id: geo.frame(in: .named(canvasSpace))])
+                }
+            )
+            .opacity(folderDragID == app.id ? 0.28 : 1)
+            .gesture(
+                DragGesture(minimumDistance: 8, coordinateSpace: .named(canvasSpace))
+                    .onChanged { v in
+                        folderDragID = app.id
+                        folderDragPoint = v.location
+                        folderEjecting = !insideFolder(v.location)
+                    }
+                    .onEnded { v in handleFolderOut(app.id, folder: folder, at: v.location) }
+            )
+            .contextMenu {
+                Button("打开") { onLaunch(app.id) }
+                Button("移出文件夹") {
+                    model.removeFromFolder(appID: app.id, folderID: folder.id)
+                    if model.appsInFolder(folder).count <= 1 { closeFolder() }
+                }
+            }
+    }
+
+    private func insideFolder(_ p: CGPoint) -> Bool {
+        folderCellFrames.values.contains { $0.insetBy(dx: -50, dy: -50).contains(p) }
+    }
+
+    private func handleFolderOut(_ appID: String, folder: Folder, at loc: CGPoint) {
+        defer { folderDragID = nil; folderEjecting = false }
+        let key = "app:" + appID
+        if insideFolder(loc), let hit = folderCellFrames.first(where: { $0.key != key && $0.value.contains(loc) }) {
+            let targetAppID = String(hit.key.dropFirst(4))
+            guard let from = folder.appIDs.firstIndex(of: appID),
+                  let to = folder.appIDs.firstIndex(of: targetAppID) else { return }
+            let relX = (loc.x - hit.value.minX) / max(hit.value.width, 1)
+            model.reorderInFolder(folder.id, from: from, to: relX >= 0.5 ? to + 1 : to)
+        } else if !insideFolder(loc) {
+            // Ejected onto the grid: place at the released slot.
+            let idx = placementIndex(at: loc)
+            model.removeFromFolder(appID: appID, folderID: folder.id)
+            model.moveEntryToDisplayIndex(appID, idx)
+            closeFolder()
+        }
+    }
+
+    private func placementIndex(at pt: CGPoint) -> Int {
+        let c = min(max(Int((pt.x - side + gapX / 2) / (cellW + gapX)), 0), C - 1)
+        let r = min(max(Int((pt.y - topMargin) / (cellH + gapY)), 0), R - 1)
+        let idx = clampedPage * perPage + r * C + c
+        return min(max(idx, 0), model.displayEntries.count)
+    }
+
+    private func closeFolder() {
+        withAnimation(spring) { model.openFolderID = nil }
     }
 }

@@ -179,6 +179,15 @@ final class LaunchModel: ObservableObject {
         save()
     }
 
+    /// Move a top-level entry to a specific slot in the visible order.
+    func moveEntryToDisplayIndex(_ id: String, _ index: Int) {
+        var vis = displayEntries
+        guard let cur = vis.firstIndex(where: { $0.id == id }) else { return }
+        let item = vis.remove(at: cur)
+        vis.insert(item, at: min(max(index, 0), vis.count))
+        setDisplayOrder(vis)
+    }
+
     func moveEntry(from source: Int, to destination: Int) {
         guard source != destination, entries.indices.contains(source) else { return }
         let item = entries.remove(at: source)

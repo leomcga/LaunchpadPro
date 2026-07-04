@@ -55,7 +55,9 @@ struct LauncherRootView: View {
             .scaleEffect(appeared ? 1 : 1.04)
             .opacity(appeared ? 1 : 0)
 
-            if let fid = model.openFolderID, let folder = currentFolder(fid) {
+            // The paged canvas renders its own in-place folder; this full-screen
+            // overlay only backs the vertical-scroll mode.
+            if settings.verticalScroll, let fid = model.openFolderID, let folder = currentFolder(fid) {
                 FolderOverlay(model: model, folder: folder, onLaunch: { id in
                     model.launch(id); onDismiss()
                 })
