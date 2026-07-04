@@ -382,6 +382,7 @@ struct FolderOverlay: View {
     @State private var draggingID: String? = nil
     @State private var dragLocation: CGPoint = .zero
     @State private var cellFrames: [String: CGRect] = [:]
+    @State private var ejecting = false   // dragged app has left the folder bounds
 
     private let cols = 5
 
@@ -392,10 +393,12 @@ struct FolderOverlay: View {
         let cellH = iconSize + 34
 
         ZStack {
-            Color.black.opacity(0.45).ignoresSafeArea()
+            Color.black.opacity(ejecting ? 0.12 : 0.45).ignoresSafeArea()
                 .onTapGesture { close() }
+                .animation(.easeOut(duration: 0.2), value: ejecting)
 
-            // Centered folder card.
+            // Centered folder card. Fades out while an app is dragged out of it,
+            // revealing the grid so the app can be placed.
             VStack(spacing: 18) {
                 titleView
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellW), spacing: 18), count: min(cols, max(1, apps.count))), spacing: 20) {
@@ -409,6 +412,9 @@ struct FolderOverlay: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.14)))
             .shadow(color: .black.opacity(0.4), radius: 34, y: 14)
+            .opacity(ejecting ? 0 : 1)
+            .scaleEffect(ejecting ? 0.94 : 1)
+            .animation(.easeOut(duration: 0.2), value: ejecting)
             .transition(.scale(scale: 0.92).combined(with: .opacity))
 
             // Floating dragged icon, positioned in full-screen folder space.
@@ -455,7 +461,11 @@ struct FolderOverlay: View {
             .opacity(draggingID == app.id ? 0.28 : 1)
             .gesture(
                 DragGesture(minimumDistance: 8, coordinateSpace: .named(folderSpace))
-                    .onChanged { v in draggingID = app.id; dragLocation = v.location }
+                    .onChanged { v in
+                        draggingID = app.id
+                        dragLocation = v.location
+                        ejecting = !insidePanel(v.location)
+                    }
                     .onEnded { v in handleFolderDrop(app.id, at: v.location) }
             )
             .contextMenu {
@@ -464,24 +474,25 @@ struct FolderOverlay: View {
             }
     }
 
+    /// A point is "inside" the folder if it's near any of its app cells.
+    private func insidePanel(_ p: CGPoint) -> Bool {
+        cellFrames.values.contains { $0.insetBy(dx: -50, dy: -50).contains(p) }
+    }
+
     private func handleFolderDrop(_ appID: String, at loc: CGPoint) {
-        defer { draggingID = nil }
+        defer { draggingID = nil; ejecting = false }
         let key = "app:" + appID
-        // Dropped onto another app in the folder -> reorder there.
-        if let hit = cellFrames.first(where: { $0.key != key && $0.value.contains(loc) }) {
+        if insidePanel(loc), let hit = cellFrames.first(where: { $0.key != key && $0.value.contains(loc) }) {
+            // Dropped onto another app in the folder -> reorder there.
             let targetAppID = String(hit.key.dropFirst(4))
             let ids = folder.appIDs
             guard let from = ids.firstIndex(of: appID), let to = ids.firstIndex(of: targetAppID) else { return }
             let relX = (loc.x - hit.value.minX) / max(hit.value.width, 1)
             model.reorderInFolder(folder.id, from: from, to: relX >= 0.5 ? to + 1 : to)
-        } else {
-            // Dropped outside the app cells -> pull it out of the folder and
-            // close so you can see it land next to the folder.
-            let insidePanel = cellFrames.values.contains { $0.insetBy(dx: -80, dy: -80).contains(loc) }
-            if !insidePanel {
-                model.removeFromFolder(appID: appID, folderID: folder.id)
-                close()
-            }
+        } else if !insidePanel(loc) {
+            // Dropped outside the folder -> pull it out and close.
+            model.removeFromFolder(appID: appID, folderID: folder.id)
+            close()
         }
     }
 
