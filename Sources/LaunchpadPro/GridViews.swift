@@ -1,6 +1,16 @@
 import SwiftUI
 import AppKit
-import UniformTypeIdentifiers
+
+// MARK: - Cell-frame reporting (for custom drag hit-testing)
+
+struct CellFramePreference: PreferenceKey {
+    static let defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
+private let launcherSpace = "launcher"
 
 // MARK: - Root
 
@@ -22,7 +32,6 @@ struct LauncherRootView: View {
 
     var body: some View {
         ZStack {
-            // Frost lives on the window; here we only dim + catch empty taps.
             Color.black.opacity(settings.backgroundDim)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
@@ -148,9 +157,10 @@ struct GridContainer: View {
                     Color.clear.contentShape(Rectangle()).onTapGesture { onDismiss() }
                     ScrollView(.vertical, showsIndicators: false) {
                         LazyVGrid(columns: gridColumns(columns), spacing: 22) {
-                            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                                EntryCell(model: model, entry: entry, index: index,
-                                          cell: cell, draggable: !searchActive, onLaunch: onLaunch)
+                            ForEach(Array(entries.enumerated()), id: \.element.id) { _, entry in
+                                EntryCell(model: model, entry: entry, cell: cell,
+                                          isDragging: false, dragTranslation: .zero, draggable: false,
+                                          onLaunch: onLaunch, onDragChanged: { _ in }, onDragEnded: { _, _ in })
                             }
                         }
                         .padding(.top, 8).padding(.bottom, 16)
@@ -174,7 +184,7 @@ struct GridContainer: View {
     }
 }
 
-// MARK: - Paged grid (offset-driven; no ScrollView so drag & taps work)
+// MARK: - Paged grid (offset-driven; custom in-app drag)
 
 struct PagedGrid: View {
     @ObservedObject var model: LaunchModel
@@ -189,13 +199,15 @@ struct PagedGrid: View {
 
     @State private var page = 0
     @GestureState private var dragX: CGFloat = 0
+    @State private var draggingID: String? = nil
+    @State private var dragTranslation: CGSize = .zero
+    @State private var cellFrames: [String: CGRect] = [:]
 
     var perPage: Int { max(1, columns * settings.rows) }
 
-    var pages: [[(Int, LaunchEntry)]] {
-        let indexed = Array(entries.enumerated()).map { ($0.offset, $0.element) }
-        let chunks = stride(from: 0, to: indexed.count, by: perPage).map {
-            Array(indexed[$0 ..< min($0 + perPage, indexed.count)])
+    var pages: [[LaunchEntry]] {
+        let chunks = stride(from: 0, to: entries.count, by: perPage).map {
+            Array(entries[$0 ..< min($0 + perPage, entries.count)])
         }
         return chunks.isEmpty ? [[]] : chunks
     }
@@ -220,9 +232,14 @@ struct PagedGrid: View {
                     ForEach(Array(pageList.enumerated()), id: \.offset) { _, pageEntries in
                         VStack {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: columns), spacing: 22) {
-                                ForEach(pageEntries, id: \.1.id) { index, entry in
-                                    EntryCell(model: model, entry: entry, index: index,
-                                              cell: cell, draggable: true, onLaunch: onLaunch)
+                                ForEach(pageEntries, id: \.id) { entry in
+                                    EntryCell(model: model, entry: entry, cell: cell,
+                                              isDragging: draggingID == entry.id,
+                                              dragTranslation: dragTranslation,
+                                              draggable: true,
+                                              onLaunch: onLaunch,
+                                              onDragChanged: { t in draggingID = entry.id; dragTranslation = t },
+                                              onDragEnded: { loc, t in handleDrop(entry.id, at: loc, translation: t) })
                                 }
                             }
                             Spacer(minLength: 0)
@@ -231,9 +248,11 @@ struct PagedGrid: View {
                         .frame(width: w, alignment: .top)
                     }
                 }
-                .offset(x: -CGFloat(clamped) * w + dragX)
+                .offset(x: -CGFloat(clamped) * w + (draggingID == nil ? dragX : 0))
                 .animation(.spring(response: 0.32, dampingFraction: 0.9), value: clamped)
             }
+            .coordinateSpace(name: launcherSpace)
+            .onPreferenceChange(CellFramePreference.self) { cellFrames = $0 }
             .frame(width: w)
             .clipped()
 
@@ -254,28 +273,52 @@ struct PagedGrid: View {
     }
 
     private func endSwipe(_ v: DragGesture.Value, width: CGFloat, count: Int) {
-        // A near-zero movement is a plain click on empty space -> dismiss.
         if abs(v.translation.width) < 6 && abs(v.translation.height) < 6 {
             onDismiss(); return
         }
         if v.translation.width < -50 { page = min(page + 1, count - 1) }
         else if v.translation.width > 50 { page = max(page - 1, 0) }
     }
+
+    /// Resolve a custom drag: figure out which cell we were dropped on and
+    /// whether to make a folder (center) or reorder (edge).
+    private func handleDrop(_ id: String, at loc: CGPoint, translation t: CGSize) {
+        defer {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                draggingID = nil; dragTranslation = .zero
+            }
+        }
+        guard let hit = cellFrames.first(where: { $0.key != id && $0.value.contains(loc) }) else { return }
+        let targetID = hit.key
+        let rect = hit.value
+        let relX = (loc.x - rect.minX) / max(rect.width, 1)
+
+        if relX > 0.3 && relX < 0.7 {
+            let ti = model.entries.firstIndex { $0.id == targetID } ?? 0
+            model.combine(draggedEntryID: id, ontoIndex: ti)
+        } else {
+            guard let from = model.entries.firstIndex(where: { $0.id == id }) else { return }
+            var to = model.entries.firstIndex(where: { $0.id == targetID }) ?? from
+            if relX >= 0.7 { to += 1 }
+            model.moveEntry(from: from, to: to)
+        }
+    }
 }
 
-// MARK: - A single grid cell (app or folder), draggable
+// MARK: - A single grid cell (app or folder)
 
 struct EntryCell: View {
     @ObservedObject var model: LaunchModel
     let entry: LaunchEntry
-    let index: Int
     let cell: CGSize
+    var isDragging: Bool
+    var dragTranslation: CGSize
     var draggable: Bool
     var onLaunch: (String) -> Void
+    var onDragChanged: (CGSize) -> Void
+    var onDragEnded: (CGPoint, CGSize) -> Void
 
-    @State private var dropTargeted = false
-
-    var body: some View {
+    private var iconView: some View {
         Group {
             switch entry {
             case .app(let id):
@@ -284,73 +327,32 @@ struct EntryCell: View {
                 FolderIcon(model: model, folder: folder)
             }
         }
-        .frame(width: cell.width, height: cell.height)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white.opacity(dropTargeted ? 0.18 : 0.001))
-        )
-        .modifier(DragReorder(model: model, entry: entry, cellWidth: cell.width,
-                              enabled: draggable, targeted: $dropTargeted))
     }
-}
 
-// MARK: - Drag & drop reordering / folder creation
-
-struct DragReorder: ViewModifier {
-    @ObservedObject var model: LaunchModel
-    let entry: LaunchEntry
-    let cellWidth: CGFloat
-    let enabled: Bool
-    @Binding var targeted: Bool
-
-    func body(content: Content) -> some View {
-        if enabled {
-            content
-                .onDrag { NSItemProvider(object: entry.id as NSString) }
-                .onDrop(of: [UTType.text],
-                        delegate: EntryDropDelegate(model: model, target: entry,
-                                                    cellWidth: cellWidth, targeted: $targeted))
-        } else {
-            content
-        }
-    }
-}
-
-struct EntryDropDelegate: DropDelegate {
-    let model: LaunchModel
-    let target: LaunchEntry
-    let cellWidth: CGFloat
-    @Binding var targeted: Bool
-
-    func dropEntered(info: DropInfo) { targeted = true }
-    func dropExited(info: DropInfo) { targeted = false }
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
-
-    func performDrop(info: DropInfo) -> Bool {
-        targeted = false
-        guard let provider = info.itemProviders(for: [UTType.text]).first else { return false }
-        // Center third of the icon => folder. Left/right => reorder before/after.
-        let x = info.location.x
-        let combineZone = x > cellWidth * 0.3 && x < cellWidth * 0.7
-        let dropAfter = x >= cellWidth * 0.7
-
-        provider.loadObject(ofClass: NSString.self) { obj, _ in
-            guard let draggedID = obj as? String, draggedID != target.id else { return }
-            DispatchQueue.main.async {
-                let targetIndex = model.entries.firstIndex(where: { $0.id == target.id }) ?? 0
-                if combineZone, case .app = target {
-                    model.combine(draggedEntryID: draggedID, ontoIndex: targetIndex)
-                } else if combineZone, case .folder(let f) = target, draggedID.hasPrefix("app:") {
-                    model.addToFolder(appID: String(draggedID.dropFirst(4)), folderID: f.id)
-                } else {
-                    guard let from = model.entries.firstIndex(where: { $0.id == draggedID }) else { return }
-                    var to = model.entries.firstIndex(where: { $0.id == target.id }) ?? from
-                    if dropAfter { to += 1 }
-                    model.moveEntry(from: from, to: to)
+    var body: some View {
+        let styled = iconView
+            .frame(width: cell.width, height: cell.height)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: CellFramePreference.self,
+                                           value: [entry.id: geo.frame(in: .named(launcherSpace))])
                 }
-            }
+            )
+            .scaleEffect(isDragging ? 1.12 : 1)
+            .offset(isDragging ? dragTranslation : .zero)
+            .opacity(isDragging ? 0.92 : 1)
+            .zIndex(isDragging ? 10 : 0)
+            .shadow(color: .black.opacity(isDragging ? 0.4 : 0), radius: 12, y: 6)
+
+        if draggable {
+            styled.gesture(
+                DragGesture(minimumDistance: 10, coordinateSpace: .named(launcherSpace))
+                    .onChanged { v in onDragChanged(v.translation) }
+                    .onEnded { v in onDragEnded(v.location, v.translation) }
+            )
+        } else {
+            styled
         }
-        return true
     }
 }
 
@@ -373,7 +375,7 @@ struct AppIcon: View {
                     .resizable()
                     .interpolation(.high)
                     .frame(width: settings.iconSize, height: settings.iconSize)
-                    .scaleEffect(hovering ? 1.08 : 1.0)
+                    .scaleEffect(hovering ? 1.06 : 1.0)
                     .animation(.spring(response: 0.25, dampingFraction: 0.7), value: hovering)
                     .shadow(color: .black.opacity(0.28), radius: 6, y: 4)
             }
@@ -502,14 +504,16 @@ struct FolderOverlay: View {
                 let cols = min(6, max(1, apps.count))
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 24), count: cols), spacing: 26) {
                     ForEach(apps, id: \.id) { app in
-                        AppIcon(model: model, appID: app.id, onLaunch: onLaunch)
-                            .contextMenu {
-                                Button("打开") { onLaunch(app.id) }
-                                Button("移出文件夹") {
-                                    model.removeFromFolder(appID: app.id, folderID: folder.id)
-                                    if model.appsInFolder(folder).count <= 1 { model.openFolderID = nil }
-                                }
+                        VStack(spacing: 6) {
+                            AppIcon(model: model, appID: app.id, onLaunch: onLaunch)
+                        }
+                        .contextMenu {
+                            Button("打开") { onLaunch(app.id) }
+                            Button("移出文件夹") {
+                                model.removeFromFolder(appID: app.id, folderID: folder.id)
+                                if model.appsInFolder(folder).count <= 1 { model.openFolderID = nil }
                             }
+                        }
                     }
                 }
                 .padding(34)
