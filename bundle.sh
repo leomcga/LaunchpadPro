@@ -1,8 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
+
 cd "$(dirname "$0")"
 
-APP_NAME="LaunchpadPro"
+APP_NAME="LaunchpadProCodex"
+DISPLAY_NAME="LaunchpadPro Codex"
+BUNDLE_ID="com.leo.launchpadprocodex"
 BUILD_DIR=".build/release"
 APP_DIR="build/${APP_NAME}.app"
 CONTENTS="${APP_DIR}/Contents"
@@ -13,36 +16,42 @@ swift build -c release
 echo "==> assembling ${APP_DIR}"
 rm -rf "${APP_DIR}"
 mkdir -p "${CONTENTS}/MacOS" "${CONTENTS}/Resources"
-
 cp "${BUILD_DIR}/${APP_NAME}" "${CONTENTS}/MacOS/${APP_NAME}"
-
-# App icon
-if [ -f "Icon/AppIcon.icns" ]; then
-    cp "Icon/AppIcon.icns" "${CONTENTS}/Resources/AppIcon.icns"
-fi
+cp "Resources/AppIcon.icns" "${CONTENTS}/Resources/AppIcon.icns"
+cp "Resources/AppIcon.png" "${CONTENTS}/Resources/AppIcon.png"
 
 cat > "${CONTENTS}/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>            <string>${APP_NAME}</string>
-    <key>CFBundleDisplayName</key>     <string>LaunchpadPro</string>
-    <key>CFBundleExecutable</key>      <string>${APP_NAME}</string>
-    <key>CFBundleIdentifier</key>      <string>com.leo.launchpadpro</string>
-    <key>CFBundleVersion</key>         <string>1.0</string>
+    <key>CFBundleName</key> <string>${APP_NAME}</string>
+    <key>CFBundleDisplayName</key> <string>${DISPLAY_NAME}</string>
+    <key>CFBundleExecutable</key> <string>${APP_NAME}</string>
+    <key>CFBundleIdentifier</key> <string>${BUNDLE_ID}</string>
+    <key>CFBundleIconFile</key> <string>AppIcon</string>
+    <key>CFBundleVersion</key> <string>1</string>
     <key>CFBundleShortVersionString</key> <string>1.0</string>
-    <key>CFBundlePackageType</key>     <string>APPL</string>
-    <key>CFBundleIconFile</key>        <string>AppIcon</string>
-    <key>LSMinimumSystemVersion</key>  <string>26.0</string>
-    <key>LSUIElement</key>             <true/>
+    <key>CFBundlePackageType</key> <string>APPL</string>
+    <key>LSMinimumSystemVersion</key> <string>26.0</string>
+    <key>LSUIElement</key> <true/>
     <key>NSHighResolutionCapable</key> <true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key> <true/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key> <string>${BUNDLE_ID}</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>launchpadprocodex</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>
 PLIST
 
-echo "==> ad-hoc code signing"
+echo "==> ad-hoc signing"
 codesign --force --deep --sign - "${APP_DIR}" 2>/dev/null || codesign --force --sign - "${APP_DIR}"
 
 echo "==> done: ${APP_DIR}"

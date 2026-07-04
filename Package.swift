@@ -2,18 +2,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "LaunchpadPro",
+    name: "LaunchpadProCodex",
     platforms: [.macOS(.v26)],
     targets: [
         .executableTarget(
-            name: "LaunchpadPro",
-            path: "Sources/LaunchpadPro",
+            name: "LaunchpadProCodex",
+            path: "Sources/LaunchpadProCodex",
             swiftSettings: [
                 .swiftLanguageMode(.v5)
             ],
             linkerSettings: [
-                .linkedFramework("Carbon"),
                 .linkedFramework("AppKit"),
+                .linkedFramework("Carbon"),
+                .linkedFramework("QuartzCore"),
+                .linkedFramework("ServiceManagement"),
                 .linkedFramework("SwiftUI")
             ]
         )

@@ -1,38 +1,51 @@
-# LaunchpadPro（自用版）
+# LaunchpadProCodex
 
-一个用 SwiftUI 写的原生 macOS 启动台（Launchpad）替代品，复刻 LaunchOS Pro 的功能。全部功能默认解锁，无账号 / 无联网 / 无授权校验。
+Codex 版 macOS 原生启动台替代品。目标是对齐原需求里的 LaunchpadPro：全屏分页网格、搜索、文件夹、拖拽排序、右键管理、菜单栏常驻、全局快捷键、触发角、开机自启与本地持久化。
 
 ## 使用
-- **唤起启动器**：`⌥ Option + 空格`（全局快捷键），或点菜单栏的 ▦ 图标
-- **菜单栏右键**：切换竖向滚动 / 触发角 / 每行图标数 / 重新扫描 / 显示隐藏的 App / 退出
-- **搜索**：唤起后直接打字过滤
-- **打开 App**：单击图标
-- **建文件夹**：把一个图标拖到另一个图标上
-- **拖动排序**：拖动图标到目标位置
-- **右键图标**：打开 / 重命名 / 在访达显示 / 隐藏 / 卸载（移到废纸篓）
-- **关闭**：Esc 或点空白处
 
-## 首次使用要授权（系统设置 → 隐私与安全性）
-- **辅助功能 / 输入监控**：触发角（hot corner）需要监听全局鼠标，首次可能提示授权。
-  全局快捷键用的是 Carbon HotKey，一般不需要授权。
-- 若快捷键或触发角没反应，去「隐私与安全性 → 辅助功能」把 LaunchpadPro 打开。
+- 唤起启动器：`⌥ Option + 空格`，或点击菜单栏网格图标
+- 搜索：打开后直接输入
+- 打开 App：单击图标
+- 拖拽排序：拖动图标到目标位置
+- 建文件夹：把一个 App 拖到另一个 App 中心
+- 文件夹：单击打开，点标题重命名，文件夹内可排序，拖出可移出
+- 右键 App：打开、重命名、访达显示、隐藏、卸载到废纸篓
+- 关闭：`Esc` 或点击空白处
 
-## 已装位置
-- App：`/Applications/LaunchpadPro.app`
-- 已加为登录项（开机自启，隐藏运行）
-- 布局 / 重命名 / 隐藏记录：`~/Library/Application Support/LaunchpadPro/layout.json`
+## 构建
 
-## 重新构建
 ```bash
-cd ~/LaunchpadPro
-./bundle.sh                 # 编译 + 打包到 build/LaunchpadPro.app
-cp -R build/LaunchpadPro.app /Applications/   # 覆盖安装
+cd ~/本地/Project_Git/LaunchpadProCodex
+swift build -c release
+./bundle.sh
 ```
 
-## 源码结构（Sources/LaunchpadPro/）
-- `AppScanner.swift` — 扫描 /Applications 等目录，取图标/名称
-- `LaunchModel.swift` — 状态、布局、文件夹、重命名、隐藏、持久化
-- `GridViews.swift` — 网格 / 图标 / 文件夹 / 搜索 / 拖拽
-- `OverlayWindow.swift` — 全屏覆盖窗口
-- `HotKey.swift` — 全局快捷键（Carbon）
-- `AppDelegate.swift` — 菜单栏、触发角、快捷键接线
+`.app` 输出在：
+
+```text
+build/LaunchpadProCodex.app
+```
+
+## 部署
+
+```bash
+./deploy.sh
+```
+
+部署到 `/Applications/LaunchpadProCodex.app`。Bundle ID 与 Claude 版不同：`com.leo.launchpadprocodex`，不会覆盖 `/Applications/LaunchpadPro.app`。
+
+## 本地数据
+
+- 布局、文件夹、重命名、隐藏：`~/Library/Application Support/LaunchpadProCodex/layout.json`
+- 设置：`UserDefaults`，key 前缀 `codex.`
+
+## 代码结构
+
+- `AppDelegate.swift`：菜单栏、快捷键、触发角、登录项
+- `OverlayController.swift`：全屏覆盖窗口、窗口层级毛玻璃、滚轮/触控板翻页
+- `LaunchModel.swift`：App、文件夹、布局和持久化
+- `LauncherViews.swift`：根视图、搜索栏、图标、文件夹浮层
+- `PagedLauncherView.swift`：分页网格、拖拽排序、建文件夹、拖出文件夹落点
+- `SettingsView.swift`：设置窗口
+- `AppScanner.swift`：扫描本机 App 和图标缓存
