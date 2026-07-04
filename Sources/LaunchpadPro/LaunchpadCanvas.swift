@@ -306,26 +306,30 @@ struct LaunchpadCanvas: View {
         let fCols = min(5, max(1, apps.count))
 
         ZStack {
-            Color.black.opacity(folderEjecting ? 0.1 : 0.42)
+            Color.black.opacity(folderEjecting ? 0.12 : 0.55)
+                .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { closeFolder() }
                 .animation(.easeOut(duration: 0.2), value: folderEjecting)
 
-            VStack(spacing: 16) {
+            VStack(spacing: 20) {
                 Text(folder.name)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.primary)
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(fCellW), spacing: 18), count: fCols), spacing: 18) {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(fCellW), spacing: 20), count: fCols), spacing: 22) {
                     ForEach(apps, id: \.id) { app in
                         folderAppCell(app: app, folder: folder, cellW: fCellW, cellH: fCellH)
                     }
                 }
             }
-            .padding(32)
-            .frame(maxWidth: CGFloat(5) * (fCellW + 18) + 64)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(.white.opacity(0.14)))
-            .shadow(color: .black.opacity(0.4), radius: 30, y: 12)
+            .padding(36)
+            .frame(maxWidth: CGFloat(fCols) * (fCellW + 20) + 72)
+            .background(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(.ultraThickMaterial)
+            )
+            .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.16)))
+            .shadow(color: .black.opacity(0.45), radius: 36, y: 16)
             .opacity(folderEjecting ? 0 : 1)
             .scaleEffect(folderEjecting ? 0.94 : 1)
             .animation(.easeOut(duration: 0.2), value: folderEjecting)
