@@ -287,8 +287,9 @@ struct PagedGrid: View {
             withAnimation(pageSpring) { page = max(clamped - 1, 0) }
         }
         .onChange(of: bus.scrollTick) { _, _ in
-            // Follow the fingers; add resistance past the first/last page.
-            var off = pageDragOffset + bus.scrollDX
+            // Amplify finger travel for a lighter, more sensitive swipe; add
+            // resistance past the first/last page.
+            var off = pageDragOffset + bus.scrollDX * 2.2
             if clamped == 0 && off > 0 { off = off * 0.35 }
             if clamped >= pageList.count - 1 && off < 0 { off = off * 0.35 }
             pageDragOffset = off
@@ -296,8 +297,8 @@ struct PagedGrid: View {
         .onChange(of: bus.scrollEndTick) { _, _ in
             let d = pageDragOffset
             var newPage = clamped
-            if d <= -w * 0.2 { newPage = min(clamped + 1, pageList.count - 1) }
-            else if d >= w * 0.2 { newPage = max(clamped - 1, 0) }
+            if d <= -w * 0.1 { newPage = min(clamped + 1, pageList.count - 1) }
+            else if d >= w * 0.1 { newPage = max(clamped - 1, 0) }
             withAnimation(pageSpring) { page = newPage; pageDragOffset = 0 }
         }
     }
@@ -322,8 +323,14 @@ struct PagedGrid: View {
         dragLocation = loc
 
         if let hit = cellFrames.first(where: { $0.key != id && $0.value.contains(loc) }) {
-            let relX = (loc.x - hit.value.minX) / max(hit.value.width, 1)
-            folderTargetID = (relX > 0.3 && relX < 0.7) ? hit.key : nil
+            // Hovering anywhere over a folder, or the center of an app, previews
+            // a folder.
+            if hit.key.hasPrefix("folder:") {
+                folderTargetID = hit.key
+            } else {
+                let relX = (loc.x - hit.value.minX) / max(hit.value.width, 1)
+                folderTargetID = (relX > 0.3 && relX < 0.7) ? hit.key : nil
+            }
         } else {
             folderTargetID = nil
         }
@@ -348,8 +355,15 @@ struct PagedGrid: View {
         guard let hit = cellFrames.first(where: { $0.key != id && $0.value.contains(loc) }) else { return }
         let targetID = hit.key
         let rect = hit.value
-        let relX = (loc.x - rect.minX) / max(rect.width, 1)
 
+        // Dropping anywhere on a folder adds to it.
+        if targetID.hasPrefix("folder:") {
+            let ti = model.entries.firstIndex { $0.id == targetID } ?? 0
+            model.combine(draggedEntryID: id, ontoIndex: ti)
+            return
+        }
+
+        let relX = (loc.x - rect.minX) / max(rect.width, 1)
         if relX > 0.3 && relX < 0.7 {
             let ti = model.entries.firstIndex { $0.id == targetID } ?? 0
             model.combine(draggedEntryID: id, ontoIndex: ti)
@@ -568,34 +582,34 @@ struct FolderOverlay: View {
             Color.black.opacity(0.45).ignoresSafeArea()
                 .onTapGesture { close() }
 
-            ZStack(alignment: .topLeading) {
-                VStack(spacing: 18) {
-                    titleView
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellW), spacing: 18), count: min(cols, max(1, apps.count))), spacing: 20) {
-                        ForEach(apps, id: \.id) { app in
-                            folderCell(app: app, size: iconSize, cellW: cellW, cellH: cellH)
-                        }
+            // Centered folder card.
+            VStack(spacing: 18) {
+                titleView
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellW), spacing: 18), count: min(cols, max(1, apps.count))), spacing: 20) {
+                    ForEach(apps, id: \.id) { app in
+                        folderCell(app: app, size: iconSize, cellW: cellW, cellH: cellH)
                     }
                 }
-                .padding(36)
-                .frame(maxWidth: CGFloat(cols) * (cellW + 18) + 72)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.14)))
-                .shadow(color: .black.opacity(0.4), radius: 34, y: 14)
-
-                if let did = draggingID, let app = model.app(for: did) {
-                    AppIcon(model: model, appID: app.id, onLaunch: { _ in })
-                        .frame(width: cellW, height: cellH)
-                        .scaleEffect(1.18)
-                        .shadow(color: .black.opacity(0.45), radius: 16, y: 8)
-                        .position(dragLocation)
-                        .allowsHitTesting(false)
-                }
             }
-            .coordinateSpace(name: folderSpace)
-            .onPreferenceChange(CellFramePreference.self) { cellFrames = $0 }
+            .padding(36)
+            .frame(maxWidth: CGFloat(cols) * (cellW + 18) + 72)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.14)))
+            .shadow(color: .black.opacity(0.4), radius: 34, y: 14)
             .transition(.scale(scale: 0.92).combined(with: .opacity))
+
+            // Floating dragged icon, positioned in full-screen folder space.
+            if let did = draggingID, let app = model.app(for: did) {
+                AppIcon(model: model, appID: app.id, onLaunch: { _ in })
+                    .frame(width: cellW, height: cellH)
+                    .scaleEffect(1.18)
+                    .shadow(color: .black.opacity(0.45), radius: 16, y: 8)
+                    .position(dragLocation)
+                    .allowsHitTesting(false)
+            }
         }
+        .coordinateSpace(name: folderSpace)
+        .onPreferenceChange(CellFramePreference.self) { cellFrames = $0 }
     }
 
     private var titleView: some View {
