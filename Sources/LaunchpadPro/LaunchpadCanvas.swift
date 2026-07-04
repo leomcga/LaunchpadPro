@@ -23,6 +23,7 @@ struct LaunchpadCanvas: View {
     @State private var pages: [[LaunchEntry]] = []
     @State private var page = 0
     @State private var draggingID: String? = nil
+    @State private var heldItem: LaunchEntry? = nil   // lifted out of `pages` during a drag
     @State private var dragPoint: CGPoint = .zero
     @State private var folderTargetID: String? = nil
     @State private var swipeOffset: CGFloat = 0
@@ -69,8 +70,17 @@ struct LaunchpadCanvas: View {
             ForEach(placedItems) { pl in
                 itemView(pl.entry)
                     .frame(width: cellW, height: cellH)
-                    .position(pl.entry.id == draggingID ? dragPoint : center(page: pl.page, index: pl.index, cp: cp))
-                    .zIndex(pl.entry.id == draggingID ? 100 : 1)
+                    .position(center(page: pl.page, index: pl.index, cp: cp))
+                    .zIndex(1)
+            }
+
+            // The lifted item follows the cursor, on top of everything.
+            if let held = heldItem {
+                itemView(held)
+                    .frame(width: cellW, height: cellH)
+                    .position(dragPoint)
+                    .zIndex(100)
+                    .allowsHitTesting(false)
             }
 
             if navPageCount > 1 {
@@ -193,11 +203,23 @@ struct LaunchpadCanvas: View {
     private func dragGesture(_ entry: LaunchEntry) -> some Gesture {
         DragGesture(minimumDistance: 8, coordinateSpace: .named(canvasSpace))
             .onChanged { v in
-                if draggingID == nil { draggingID = entry.id; pages = buildPages() }
+                if draggingID == nil { beginDrag(entry) }
                 dragPoint = v.location
                 updateDrag(v.location)
             }
-            .onEnded { _ in endDrag() }
+            .onEnded { v in endDrag(at: v.location) }
+    }
+
+    private func beginDrag(_ entry: LaunchEntry) {
+        draggingID = entry.id
+        pages = buildPages()
+        if let (sp, si) = locate(entry.id) {
+            withAnimation(flow) {
+                heldItem = pages[sp].remove(at: si)   // lift out; its page closes up
+                removeEmptyPages()
+                page = min(max(page, 0), pages.count - 1)
+            }
+        }
     }
 
     // MARK: - Geometry
@@ -225,32 +247,17 @@ struct LaunchpadCanvas: View {
         let m: CGFloat = 55
         if pt.x < m { edgeFlip(-1) } else if pt.x > size.width - m { edgeFlip(1) }
 
+        // Folder preview: hovering the centre of an existing item.
         let (tp, ti) = targetAt(pt)
         if tp < pages.count, ti < pages[tp].count {
             let occ = pages[tp][ti]
-            if occ.id != draggingID {
-                let ctr = center(page: tp, index: ti, cp: clampedPage)
-                if abs(pt.x - ctr.x) < cellW * 0.3 && abs(pt.y - ctr.y) < cellH * 0.3 {
-                    folderTargetID = occ.id
-                    return
-                }
+            let ctr = center(page: tp, index: ti, cp: clampedPage)
+            if abs(pt.x - ctr.x) < cellW * 0.3 && abs(pt.y - ctr.y) < cellH * 0.3 {
+                folderTargetID = occ.id
+                return
             }
         }
         folderTargetID = nil
-        moveDragged(to: tp, index: ti)
-    }
-
-    private func moveDragged(to tp: Int, index ti: Int) {
-        guard let (sp, si) = locate(draggingID ?? "") , tp < pages.count else { return }
-        if sp == tp && si == ti { return }
-        withAnimation(flow) {
-            let item = pages[sp].remove(at: si)
-            var t = ti
-            if sp == tp && si < t { t -= 1 }
-            t = min(max(t, 0), pages[tp].count)
-            pages[tp].insert(item, at: t)
-            cascadeOverflow()
-        }
     }
 
     private func edgeFlip(_ dir: Int) {
@@ -263,17 +270,30 @@ struct LaunchpadCanvas: View {
         }
     }
 
-    private func endDrag() {
+    private func endDrag(at loc: CGPoint) {
         let did = draggingID
         let ft = folderTargetID
-        withAnimation(flow) { draggingID = nil; folderTargetID = nil }
-        guard let did else { return }
+        let held = heldItem
+        guard let did, let held else {
+            withAnimation(flow) { draggingID = nil; folderTargetID = nil; heldItem = nil }
+            return
+        }
         if let ft {
+            // Merge into / create a folder; the held item stays in model.entries.
             let ti = model.entries.firstIndex { $0.id == ft } ?? 0
             model.combine(draggedEntryID: did, ontoIndex: ti)
+            withAnimation(flow) { draggingID = nil; folderTargetID = nil; heldItem = nil }
             pages = buildPages()
         } else {
-            removeEmptyPages()
+            var (tp, ti) = targetAt(loc)
+            withAnimation(flow) {
+                if tp >= pages.count { pages.append([]); tp = pages.count - 1; ti = 0 }
+                ti = min(max(ti, 0), pages[tp].count)
+                pages[tp].insert(held, at: ti)
+                cascadeOverflow()
+                removeEmptyPages()
+                draggingID = nil; folderTargetID = nil; heldItem = nil
+            }
             model.commitPages(pages)
         }
     }
