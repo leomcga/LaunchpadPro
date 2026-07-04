@@ -102,6 +102,12 @@ struct LaunchpadCanvas: View {
             pages = buildPages()
         }
         .onChange(of: model.displayEntries) { _, _ in if draggingID == nil { pages = buildPages() } }
+        .onChange(of: model.openFolderID) { _, newValue in
+            // Opening/closing a folder must never leave a half-started grid drag
+            // stuck (which would block all future drags).
+            draggingID = nil; folderTargetID = nil
+            if newValue == nil { folderDragID = nil; folderEjecting = false }
+        }
         .onChange(of: bus.nextPageTick) { _, _ in withAnimation(spring) { page = min(cp + 1, navPageCount - 1) } }
         .onChange(of: bus.prevPageTick) { _, _ in withAnimation(spring) { page = max(cp - 1, 0) } }
         .onChange(of: bus.scrollTick) { _, _ in
@@ -210,6 +216,7 @@ struct LaunchpadCanvas: View {
     }
 
     private func beginDrag(_ entry: LaunchEntry) {
+        guard model.openFolderID == nil else { return }
         draggingID = entry.id
         pages = buildPages()
     }
