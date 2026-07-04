@@ -269,11 +269,26 @@ struct LaunchpadCanvas: View {
             return
         }
         if let ft {
-            // Merge into / create a folder.
+            // Merge into / create a folder, keeping the folder where the target
+            // sat (don't let it jump to the last page).
             let ti = model.entries.firstIndex { $0.id == ft } ?? 0
             model.combine(draggedEntryID: did, ontoIndex: ti)
-            withAnimation(flow) { draggingID = nil; folderTargetID = nil }
-            pages = buildPages()
+            let draggedAppID = did.hasPrefix("app:") ? String(did.dropFirst(4)) : nil
+            let newFolder = draggedAppID.flatMap { a in
+                model.entries.first { if case .folder(let f) = $0 { return f.appIDs.contains(a) }; return false }
+            }
+            withAnimation(flow) {
+                if let newFolder, let (tp, tpi) = locate(ft) {
+                    pages[tp][tpi] = newFolder               // folder takes the target's slot
+                    if let (sp, si) = locate(did) { pages[sp].remove(at: si) }
+                    removeEmptyPages()
+                    draggingID = nil; folderTargetID = nil
+                    model.commitPages(pages)
+                    return
+                }
+                draggingID = nil; folderTargetID = nil
+                pages = buildPages()
+            }
         } else if let (sp, si) = locate(did) {
             var (tp, ti) = targetAt(loc)
             withAnimation(flow) {
