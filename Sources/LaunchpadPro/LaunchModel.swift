@@ -230,24 +230,25 @@ final class LaunchModel: ObservableObject {
         save()
     }
 
-    /// Pull an app out of its folder back to the top level.
+    /// Pull an app out of its folder, dropping it right next to the folder.
     func removeFromFolder(appID: String, folderID: String) {
-        for i in entries.indices {
-            if case .folder(var f) = entries[i], f.id == folderID {
-                f.appIDs.removeAll { $0 == appID }
-                if f.appIDs.count <= 1 {
-                    // dissolve folder: promote remaining app, drop folder
-                    let remaining = f.appIDs
-                    entries.remove(at: i)
-                    for r in remaining.reversed() { entries.insert(.app(r), at: i) }
-                } else {
-                    entries[i] = .folder(f)
-                }
-                break
-            }
+        guard let fi = entries.firstIndex(where: {
+            if case .folder(let f) = $0 { return f.id == folderID } else { return false }
+        }), case .folder(var f) = entries[fi] else { return }
+
+        f.appIDs.removeAll { $0 == appID }
+        var insertAt = fi + 1
+        if f.appIDs.count <= 1 {
+            // dissolve folder: promote remaining app(s), drop folder
+            let remaining = f.appIDs
+            entries.remove(at: fi)
+            for (k, r) in remaining.enumerated() { entries.insert(.app(r), at: fi + k) }
+            insertAt = fi + remaining.count
+        } else {
+            entries[fi] = .folder(f)
         }
         if !entries.contains(where: { if case .app(let a) = $0 { return a == appID } else { return false } }) {
-            entries.append(.app(appID))
+            entries.insert(.app(appID), at: min(insertAt, entries.count))
         }
         save()
     }

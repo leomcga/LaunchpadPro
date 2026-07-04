@@ -206,6 +206,8 @@ struct PagedGrid: View {
     @State private var dragLocation: CGPoint = .zero
     @State private var cellFrames: [String: CGRect] = [:]
     @State private var pageDragOffset: CGFloat = 0
+    @State private var folderTargetID: String? = nil
+    @State private var lastEdgeFlip: Date = .distantPast
 
     var perPage: Int { max(1, columns * settings.rows) }
 
@@ -233,9 +235,10 @@ struct PagedGrid: View {
                                     ForEach(pageEntries, id: \.id) { entry in
                                         EntryCell(model: model, entry: entry, cell: cell,
                                                   isDragging: draggingID == entry.id,
+                                                  isFolderTarget: folderTargetID == entry.id,
                                                   draggable: true,
                                                   onLaunch: onLaunch,
-                                                  onDragChanged: { loc, _ in draggingID = entry.id; dragLocation = loc },
+                                                  onDragChanged: { loc, _ in dragMoved(entry.id, at: loc, w: w, count: pageList.count) },
                                                   onDragEnded: { loc, _ in handleDrop(entry.id, at: loc) })
                                     }
                                 }
@@ -312,8 +315,36 @@ struct PagedGrid: View {
         }
     }
 
+    /// Called continuously while an icon is being dragged: track the cursor,
+    /// preview which target would become a folder, and flip pages at the edge.
+    private func dragMoved(_ id: String, at loc: CGPoint, w: CGFloat, count: Int) {
+        draggingID = id
+        dragLocation = loc
+
+        if let hit = cellFrames.first(where: { $0.key != id && $0.value.contains(loc) }) {
+            let relX = (loc.x - hit.value.minX) / max(hit.value.width, 1)
+            folderTargetID = (relX > 0.3 && relX < 0.7) ? hit.key : nil
+        } else {
+            folderTargetID = nil
+        }
+
+        // Cross-page: hold the dragged icon near an edge to flip pages.
+        let margin: CGFloat = 60
+        if loc.x < margin { edgeFlip(-1, count: count) }
+        else if loc.x > w - margin { edgeFlip(1, count: count) }
+    }
+
+    private func edgeFlip(_ dir: Int, count: Int) {
+        guard Date().timeIntervalSince(lastEdgeFlip) > 0.55 else { return }
+        let np = min(max(page + dir, 0), max(0, count - 1))
+        if np != page {
+            withAnimation(pageSpring) { page = np }
+            lastEdgeFlip = Date()
+        }
+    }
+
     private func handleDrop(_ id: String, at loc: CGPoint) {
-        defer { draggingID = nil }
+        defer { draggingID = nil; folderTargetID = nil }
         guard let hit = cellFrames.first(where: { $0.key != id && $0.value.contains(loc) }) else { return }
         let targetID = hit.key
         let rect = hit.value
@@ -338,6 +369,7 @@ struct EntryCell: View {
     let entry: LaunchEntry
     let cell: CGSize
     var isDragging: Bool
+    var isFolderTarget: Bool = false
     var draggable: Bool
     var onLaunch: (String) -> Void
     var onDragChanged: (CGPoint, CGSize) -> Void
@@ -356,11 +388,23 @@ struct EntryCell: View {
         let styled = iconView
             .frame(width: cell.width, height: cell.height)
             .background(
+                // Folder-forming highlight: grows behind the target while an
+                // icon hovers over it, so you see a folder will be created
+                // before releasing.
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(.white.opacity(isFolderTarget ? 0.22 : 0))
+                    .scaleEffect(isFolderTarget ? 1.0 : 0.6)
+                    .opacity(isFolderTarget ? 1 : 0)
+                    .animation(.spring(response: 0.26, dampingFraction: 0.7), value: isFolderTarget)
+            )
+            .background(
                 GeometryReader { geo in
                     Color.clear.preference(key: CellFramePreference.self,
                                            value: [entry.id: geo.frame(in: .named(launcherSpace))])
                 }
             )
+            .scaleEffect(isFolderTarget ? 0.92 : 1)
+            .animation(.spring(response: 0.26, dampingFraction: 0.7), value: isFolderTarget)
             // Leave a dimmed placeholder in the grid while the floating copy drags.
             .opacity(isDragging ? 0.28 : 1)
 
@@ -604,10 +648,13 @@ struct FolderOverlay: View {
             let relX = (loc.x - hit.value.minX) / max(hit.value.width, 1)
             model.reorderInFolder(folder.id, from: from, to: relX >= 0.5 ? to + 1 : to)
         } else {
-            // Dropped on empty space inside the panel -> keep; far outside -> pull out.
-            // Approximate: if the drop is outside every cell's row area, pull it out.
+            // Dropped outside the app cells -> pull it out of the folder and
+            // close so you can see it land next to the folder.
             let insidePanel = cellFrames.values.contains { $0.insetBy(dx: -80, dy: -80).contains(loc) }
-            if !insidePanel { pullOut(appID) }
+            if !insidePanel {
+                model.removeFromFolder(appID: appID, folderID: folder.id)
+                close()
+            }
         }
     }
 
