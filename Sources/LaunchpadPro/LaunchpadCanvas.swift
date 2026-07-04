@@ -44,7 +44,10 @@ struct LaunchpadCanvas: View {
     /// While dragging we render/mutate a local copy; otherwise the model's list.
     private var live: [LaunchEntry] { draggingID != nil ? order : model.displayEntries }
     private var pageCount: Int { max(1, Int(ceil(Double(live.count) / Double(perPage)))) }
-    private var clampedPage: Int { min(max(page, 0), pageCount - 1) }
+    /// While dragging, expose one extra trailing page to drop onto; it collapses
+    /// on release unless an item actually overflows onto it.
+    private var navPageCount: Int { pageCount + (draggingID != nil ? 1 : 0) }
+    private var clampedPage: Int { min(max(page, 0), navPageCount - 1) }
 
     private var cellW: CGFloat { max(64, (size.width - 2 * side - CGFloat(C - 1) * gapX) / CGFloat(C)) }
     private var cellH: CGFloat { settings.iconSize + (settings.showLabels ? 34 : 10) }
@@ -64,10 +67,10 @@ struct LaunchpadCanvas: View {
                     .zIndex(entry.id == draggingID ? 100 : 1)
             }
 
-            if pageCount > 1 {
+            if navPageCount > 1 {
                 HStack(spacing: 10) {
-                    ForEach(0..<pageCount, id: \.self) { i in
-                        Circle().fill(.white.opacity(i == cp ? 0.95 : 0.35))
+                    ForEach(0..<navPageCount, id: \.self) { i in
+                        Circle().fill(.white.opacity(i == cp ? 0.95 : (i >= pageCount ? 0.18 : 0.35)))
                             .frame(width: 7, height: 7)
                             .onTapGesture { withAnimation(spring) { page = i } }
                     }
@@ -82,18 +85,18 @@ struct LaunchpadCanvas: View {
         .frame(width: size.width, height: size.height)
         .clipped()
         .coordinateSpace(name: canvasSpace)
-        .onChange(of: bus.nextPageTick) { _, _ in withAnimation(spring) { page = min(cp + 1, pageCount - 1) } }
+        .onChange(of: bus.nextPageTick) { _, _ in withAnimation(spring) { page = min(cp + 1, navPageCount - 1) } }
         .onChange(of: bus.prevPageTick) { _, _ in withAnimation(spring) { page = max(cp - 1, 0) } }
         .onChange(of: bus.scrollTick) { _, _ in
             var off = swipeOffset + bus.scrollDX * 2.2
             if cp == 0 && off > 0 { off *= 0.35 }
-            if cp >= pageCount - 1 && off < 0 { off *= 0.35 }
+            if cp >= navPageCount - 1 && off < 0 { off *= 0.35 }
             swipeOffset = off
         }
         .onChange(of: bus.scrollEndTick) { _, _ in
             let d = swipeOffset
             var np = cp
-            if d <= -size.width * 0.1 { np = min(cp + 1, pageCount - 1) }
+            if d <= -size.width * 0.1 { np = min(cp + 1, navPageCount - 1) }
             else if d >= size.width * 0.1 { np = max(cp - 1, 0) }
             withAnimation(spring) { page = np; swipeOffset = 0 }
         }
@@ -152,7 +155,7 @@ struct LaunchpadCanvas: View {
         let c = min(max(Int((pt.x - side + gapX / 2) / (cellW + gapX)), 0), C - 1)
         let r = min(max(Int((pt.y - topMargin) / (cellH + gapY)), 0), R - 1)
         let idx = clampedPage * perPage + r * C + c
-        return min(max(idx, 0), max(0, order.count - 1))
+        return min(max(idx, 0), order.count)
     }
 
     // MARK: - Drag handling
@@ -188,7 +191,7 @@ struct LaunchpadCanvas: View {
 
     private func edgeFlip(_ dir: Int) {
         guard Date().timeIntervalSince(lastEdgeFlip) > 0.55 else { return }
-        let np = min(max(page + dir, 0), pageCount - 1)
+        let np = min(max(page + dir, 0), navPageCount - 1)
         if np != page {
             withAnimation(spring) { page = np }
             lastEdgeFlip = Date()
