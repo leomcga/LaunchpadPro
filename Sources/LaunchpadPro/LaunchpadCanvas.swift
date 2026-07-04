@@ -1,11 +1,17 @@
 import SwiftUI
 import AppKit
 
-/// A flat, absolutely-positioned launcher canvas with a gap-aware slot layout.
-/// Items live in fixed slots (nil = empty), so pages can be partially filled and
-/// an app stays exactly where it's placed — no forced repacking. Dragging pushes
-/// neighbours into the nearest empty slot (like the native Launchpad) and can
-/// create/collapse trailing pages.
+private struct PlacedItem: Identifiable {
+    let page: Int
+    let index: Int
+    let entry: LaunchEntry
+    var id: String { entry.id }
+}
+
+/// A per-page launcher canvas. Each page is its own packed list; pages may be
+/// non-full and empty pages disappear automatically. Dragging reflows items and
+/// only spills a genuine overflow to the next page — so pages are created and
+/// destroyed naturally as apps move (like the native Launchpad).
 struct LaunchpadCanvas: View {
     @ObservedObject var model: LaunchModel
     @ObservedObject var settings = AppSettings.shared
@@ -14,7 +20,7 @@ struct LaunchpadCanvas: View {
     var onLaunch: (String) -> Void
     var onDismiss: () -> Void
 
-    @State private var slots: [LaunchEntry?] = []
+    @State private var pages: [[LaunchEntry]] = []
     @State private var page = 0
     @State private var draggingID: String? = nil
     @State private var dragPoint: CGPoint = .zero
@@ -22,7 +28,6 @@ struct LaunchpadCanvas: View {
     @State private var swipeOffset: CGFloat = 0
     @State private var lastEdgeFlip = Date.distantPast
 
-    // Open-folder state (shares the canvas coordinate space).
     @State private var folderDragID: String? = nil
     @State private var folderDragPoint: CGPoint = .zero
     @State private var folderEjecting = false
@@ -40,12 +45,20 @@ struct LaunchpadCanvas: View {
     private var R: Int { max(1, settings.rows) }
     private var perPage: Int { C * R }
 
-    private var pageCount: Int { max(1, Int(ceil(Double(slots.count) / Double(perPage)))) }
+    private var pageCount: Int { max(1, pages.count) }
     private var navPageCount: Int { pageCount + (draggingID != nil ? 1 : 0) }
     private var clampedPage: Int { min(max(page, 0), navPageCount - 1) }
 
     private var cellW: CGFloat { max(64, (size.width - 2 * side - CGFloat(C - 1) * gapX) / CGFloat(C)) }
     private var cellH: CGFloat { settings.iconSize + (settings.showLabels ? 34 : 10) }
+
+    private var placedItems: [PlacedItem] {
+        var out: [PlacedItem] = []
+        for (p, items) in pages.enumerated() {
+            for (i, e) in items.enumerated() { out.append(PlacedItem(page: p, index: i, entry: e)) }
+        }
+        return out
+    }
 
     var body: some View {
         let cp = clampedPage
@@ -53,12 +66,11 @@ struct LaunchpadCanvas: View {
         ZStack(alignment: .topLeading) {
             Color.clear.contentShape(Rectangle()).onTapGesture { onDismiss() }
 
-            ForEach(slots.compactMap { $0 }, id: \.id) { entry in
-                let idx = slots.firstIndex { $0?.id == entry.id } ?? 0
-                itemView(entry)
+            ForEach(placedItems) { pl in
+                itemView(pl.entry)
                     .frame(width: cellW, height: cellH)
-                    .position(entry.id == draggingID ? dragPoint : center(idx, page: cp))
-                    .zIndex(entry.id == draggingID ? 100 : 1)
+                    .position(pl.entry.id == draggingID ? dragPoint : center(page: pl.page, index: pl.index, cp: cp))
+                    .zIndex(pl.entry.id == draggingID ? 100 : 1)
             }
 
             if navPageCount > 1 {
@@ -79,8 +91,8 @@ struct LaunchpadCanvas: View {
         .frame(width: size.width, height: size.height)
         .clipped()
         .coordinateSpace(name: canvasSpace)
-        .onAppear { slots = buildSlots() }
-        .onChange(of: model.displayEntries) { _, _ in if draggingID == nil { slots = buildSlots() } }
+        .onAppear { pages = buildPages() }
+        .onChange(of: model.displayEntries) { _, _ in if draggingID == nil { pages = buildPages() } }
         .onChange(of: bus.nextPageTick) { _, _ in withAnimation(spring) { page = min(cp + 1, navPageCount - 1) } }
         .onChange(of: bus.prevPageTick) { _, _ in withAnimation(spring) { page = max(cp - 1, 0) } }
         .onChange(of: bus.scrollTick) { _, _ in
@@ -98,40 +110,60 @@ struct LaunchpadCanvas: View {
         }
     }
 
-    // MARK: - Slot model
+    // MARK: - Page model
 
-    private func buildSlots() -> [LaunchEntry?] {
+    private func buildPages() -> [[LaunchEntry]] {
         let visible = model.displayEntries
         var byID: [String: LaunchEntry] = [:]
         for e in visible { byID[e.id] = e }
 
-        var result: [LaunchEntry?] = []
+        var result: [[LaunchEntry]] = []
         var placed = Set<String>()
-        for id in model.slotArrangement {
-            if let id, let e = byID[id], !placed.contains(id) {
-                result.append(e); placed.insert(id)
-            } else {
-                result.append(nil)
+        for ids in model.pageArrangement {
+            var pg: [LaunchEntry] = []
+            for id in ids where !placed.contains(id) {
+                if let e = byID[id] { pg.append(e); placed.insert(id) }
             }
+            result.append(pg)
         }
         for e in visible where !placed.contains(e.id) {
-            if let gap = result.firstIndex(where: { $0 == nil }) { result[gap] = e }
-            else { result.append(e) }
-            placed.insert(e.id)
+            if result.isEmpty || result[result.count - 1].count >= perPage { result.append([]) }
+            result[result.count - 1].append(e); placed.insert(e.id)
         }
-        while let last = result.last, last == nil { result.removeLast() }
-        return result
+
+        // Enforce the per-page cap (e.g. after a column/row change) and drop
+        // empty pages.
+        var normalized: [[LaunchEntry]] = []
+        for pg in result {
+            var rest = pg
+            while rest.count > perPage { normalized.append(Array(rest.prefix(perPage))); rest = Array(rest.dropFirst(perPage)) }
+            if !rest.isEmpty { normalized.append(rest) }
+        }
+        return normalized.isEmpty ? [[]] : normalized
     }
 
-    private func normalizeSlots() {
-        while let last = slots.last, last == nil { slots.removeLast() }
+    private func cascadeOverflow() {
+        var p = 0
+        while p < pages.count {
+            while pages[p].count > perPage {
+                let overflow = pages[p].removeLast()
+                if p + 1 >= pages.count { pages.append([]) }
+                pages[p + 1].insert(overflow, at: 0)
+            }
+            p += 1
+        }
     }
 
-    private func ensureCapacity(page p: Int) {
-        let need = (p + 1) * perPage
-        if slots.count < need {
-            slots.append(contentsOf: Array(repeating: nil, count: need - slots.count))
+    private func removeEmptyPages() {
+        pages.removeAll { $0.isEmpty }
+        if pages.isEmpty { pages = [[]] }
+    }
+
+    private func locate(_ id: String) -> (Int, Int)? {
+        for p in pages.indices {
+            if let i = pages[p].firstIndex(where: { $0.id == id }) { return (p, i) }
         }
+        return nil
     }
 
     // MARK: - Item view
@@ -161,7 +193,7 @@ struct LaunchpadCanvas: View {
     private func dragGesture(_ entry: LaunchEntry) -> some Gesture {
         DragGesture(minimumDistance: 8, coordinateSpace: .named(canvasSpace))
             .onChanged { v in
-                if draggingID == nil { draggingID = entry.id; slots = buildSlots() }
+                if draggingID == nil { draggingID = entry.id; pages = buildPages() }
                 dragPoint = v.location
                 updateDrag(v.location)
             }
@@ -170,21 +202,21 @@ struct LaunchpadCanvas: View {
 
     // MARK: - Geometry
 
-    private func center(_ i: Int, page: Int) -> CGPoint {
-        let p = i / perPage
-        let inp = i % perPage
-        let r = inp / C
-        let c = inp % C
-        let x = (CGFloat(p) - CGFloat(page)) * size.width + side + CGFloat(c) * (cellW + gapX) + cellW / 2 + swipeOffset
+    private func center(page p: Int, index i: Int, cp: Int) -> CGPoint {
+        let r = i / C
+        let c = i % C
+        let x = (CGFloat(p) - CGFloat(cp)) * size.width + side + CGFloat(c) * (cellW + gapX) + cellW / 2 + swipeOffset
         let y = topMargin + CGFloat(r) * (cellH + gapY) + cellH / 2
         return CGPoint(x: x, y: y)
     }
 
-    private func slotAtPoint(_ pt: CGPoint) -> Int {
+    private func targetAt(_ pt: CGPoint) -> (Int, Int) {
+        let p = clampedPage
         let c = min(max(Int((pt.x - side + gapX / 2) / (cellW + gapX)), 0), C - 1)
         let r = min(max(Int((pt.y - topMargin) / (cellH + gapY)), 0), R - 1)
-        let idx = clampedPage * perPage + r * C + c
-        return min(max(idx, 0), max(0, slots.count - 1))
+        let slot = r * C + c
+        let count = (p < pages.count) ? pages[p].count : 0
+        return (p, min(slot, count))
     }
 
     // MARK: - Drag handling
@@ -193,62 +225,39 @@ struct LaunchpadCanvas: View {
         let m: CGFloat = 55
         if pt.x < m { edgeFlip(-1) } else if pt.x > size.width - m { edgeFlip(1) }
 
-        ensureCapacity(page: clampedPage)
-        let t = slotAtPoint(pt)
-
-        if t < slots.count, let occ = slots[t], occ.id != draggingID {
-            let ctr = center(t, page: clampedPage)
-            if abs(pt.x - ctr.x) < cellW * 0.3 && abs(pt.y - ctr.y) < cellH * 0.3 {
-                folderTargetID = occ.id
-                return
+        let (tp, ti) = targetAt(pt)
+        if tp < pages.count, ti < pages[tp].count {
+            let occ = pages[tp][ti]
+            if occ.id != draggingID {
+                let ctr = center(page: tp, index: ti, cp: clampedPage)
+                if abs(pt.x - ctr.x) < cellW * 0.3 && abs(pt.y - ctr.y) < cellH * 0.3 {
+                    folderTargetID = occ.id
+                    return
+                }
             }
         }
         folderTargetID = nil
-        moveDraggedToSlot(t)
+        moveDragged(to: tp, index: ti)
     }
 
-    private func moveDraggedToSlot(_ t: Int) {
-        guard let from = slots.firstIndex(where: { $0?.id == draggingID }) else { return }
-        if t == from { return }
+    private func moveDragged(to tp: Int, index ti: Int) {
+        guard let (sp, si) = locate(draggingID ?? "") , tp < pages.count else { return }
+        if sp == tp && si == ti { return }
         withAnimation(flow) {
-            let item = slots[from]
-            slots[from] = nil
-            if t < slots.count, slots[t] == nil {
-                slots[t] = item
-            } else {
-                insertShift(item, at: t)
-            }
+            let item = pages[sp].remove(at: si)
+            var t = ti
+            if sp == tp && si < t { t -= 1 }
+            t = min(max(t, 0), pages[tp].count)
+            pages[tp].insert(item, at: t)
+            cascadeOverflow()
         }
-    }
-
-    /// Open slot `t` by pushing the run of items between `t` and the nearest
-    /// empty slot one step toward that empty slot, then drop `item` at `t`.
-    private func insertShift(_ item: LaunchEntry?, at t: Int) {
-        if t >= slots.count {
-            slots.append(contentsOf: Array(repeating: nil, count: t - slots.count + 1))
-        }
-        if slots[t] == nil { slots[t] = item; return }
-
-        var e = -1, best = Int.max
-        for i in slots.indices where slots[i] == nil {
-            let d = abs(i - t); if d < best { best = d; e = i }
-        }
-        if e == -1 { slots.append(item); return }
-        if e > t {
-            var i = e
-            while i > t { slots[i] = slots[i - 1]; i -= 1 }
-        } else {
-            var i = e
-            while i < t { slots[i] = slots[i + 1]; i += 1 }
-        }
-        slots[t] = item
     }
 
     private func edgeFlip(_ dir: Int) {
         guard Date().timeIntervalSince(lastEdgeFlip) > 0.55 else { return }
         let np = min(max(page + dir, 0), navPageCount - 1)
         if np != page {
-            if np >= pageCount { ensureCapacity(page: np) }
+            if np >= pages.count { pages.append([]) }
             withAnimation(spring) { page = np }
             lastEdgeFlip = Date()
         }
@@ -262,10 +271,10 @@ struct LaunchpadCanvas: View {
         if let ft {
             let ti = model.entries.firstIndex { $0.id == ft } ?? 0
             model.combine(draggedEntryID: did, ontoIndex: ti)
-            slots = buildSlots()
+            pages = buildPages()
         } else {
-            normalizeSlots()
-            model.commitSlots(slots)
+            removeEmptyPages()
+            model.commitPages(pages)
         }
     }
 
@@ -362,18 +371,20 @@ struct LaunchpadCanvas: View {
             let relX = (loc.x - hit.value.minX) / max(hit.value.width, 1)
             model.reorderInFolder(folder.id, from: from, to: relX >= 0.5 ? to + 1 : to)
         } else if !insideFolder(loc) {
-            // Ejected onto the grid: place at the released slot.
+            // Ejected onto the grid: drop into the released page/slot.
             model.removeFromFolder(appID: appID, folderID: folder.id)
-            slots = buildSlots()
-            ensureCapacity(page: clampedPage)
-            let t = slotAtPoint(loc)
-            if let from = slots.firstIndex(where: { $0?.id == key }) {
-                let item = slots[from]
-                slots[from] = nil
-                if t < slots.count, slots[t] == nil { slots[t] = item } else { insertShift(item, at: t) }
+            pages = buildPages()
+            let (tp, ti) = targetAt(loc)
+            if let (sp, si) = locate(key), tp < pages.count {
+                let item = pages[sp].remove(at: si)
+                var t = ti
+                if sp == tp && si < t { t -= 1 }
+                t = min(max(t, 0), pages[tp].count)
+                pages[tp].insert(item, at: t)
+                cascadeOverflow()
             }
-            normalizeSlots()
-            model.commitSlots(slots)
+            removeEmptyPages()
+            model.commitPages(pages)
             closeFolder()
         }
     }
