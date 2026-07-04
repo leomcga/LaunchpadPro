@@ -15,27 +15,30 @@ struct LauncherRootView: View {
     @FocusState private var searchFocused: Bool
     @State private var appeared = false
 
+    /// Inset the content below the menu bar / notch.
+    private var topInset: CGFloat {
+        max(NSScreen.main?.safeAreaInsets.top ?? 0, 40) + 8
+    }
+
     var body: some View {
         ZStack {
-            // The frosted blur itself lives on the window (single continuous
-            // layer -> no seam between pages). Here we only add a uniform dim
-            // for text legibility, and catch taps on empty space to dismiss.
+            // Frost lives on the window; here we only dim + catch empty taps.
             Color.black.opacity(settings.backgroundDim)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { onDismiss() }
 
-            VStack(spacing: 22) {
+            VStack(spacing: 20) {
                 SearchField(text: $model.searchText, focused: $searchFocused,
                             model: model,
                             onOpenSettings: onOpenSettings, onRescan: onRescan, onQuit: onQuit)
                     .frame(width: 420)
-                    .padding(.top, 30)
 
-                GridContainer(model: model, onLaunch: { id in
-                    model.launch(id); onDismiss()
-                })
+                GridContainer(model: model,
+                              onLaunch: { id in model.launch(id); onDismiss() },
+                              onDismiss: onDismiss)
             }
+            .padding(.top, topInset)
             .padding(.horizontal, 60)
             .padding(.bottom, 20)
             .scaleEffect(appeared ? 1 : 1.04)
@@ -131,6 +134,7 @@ struct GridContainer: View {
     @ObservedObject var model: LaunchModel
     @ObservedObject var settings = AppSettings.shared
     var onLaunch: (String) -> Void
+    var onDismiss: () -> Void
 
     var body: some View {
         let entries = model.displayEntries
@@ -140,20 +144,22 @@ struct GridContainer: View {
         GeometryReader { geo in
             let cell = cellSize(in: geo.size, columns: columns)
             if settings.verticalScroll || searchActive {
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVGrid(columns: gridColumns(columns), spacing: 22) {
-                        ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                            EntryCell(model: model, entry: entry, index: index,
-                                      cell: cell, draggable: !searchActive, onLaunch: onLaunch)
+                ZStack {
+                    Color.clear.contentShape(Rectangle()).onTapGesture { onDismiss() }
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVGrid(columns: gridColumns(columns), spacing: 22) {
+                            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                                EntryCell(model: model, entry: entry, index: index,
+                                          cell: cell, draggable: !searchActive, onLaunch: onLaunch)
+                            }
                         }
+                        .padding(.top, 8).padding(.bottom, 16)
+                        .frame(maxWidth: .infinity, alignment: .top)
                     }
-                    .padding(.top, 8)
-                    .padding(.bottom, 16)
-                    .frame(maxWidth: .infinity, alignment: .top)
                 }
             } else {
                 PagedGrid(model: model, entries: entries, columns: columns,
-                          cell: cell, size: geo.size, onLaunch: onLaunch)
+                          cell: cell, size: geo.size, onLaunch: onLaunch, onDismiss: onDismiss)
             }
         }
     }
@@ -168,18 +174,21 @@ struct GridContainer: View {
     }
 }
 
-// MARK: - Paged grid (classic Launchpad horizontal pages)
+// MARK: - Paged grid (offset-driven; no ScrollView so drag & taps work)
 
 struct PagedGrid: View {
     @ObservedObject var model: LaunchModel
     @ObservedObject var settings = AppSettings.shared
+    @ObservedObject var bus = LauncherBus.shared
     let entries: [LaunchEntry]
     let columns: Int
     let cell: CGSize
     let size: CGSize
     var onLaunch: (String) -> Void
+    var onDismiss: () -> Void
 
     @State private var page = 0
+    @GestureState private var dragX: CGFloat = 0
 
     var perPage: Int { max(1, columns * settings.rows) }
 
@@ -193,10 +202,22 @@ struct PagedGrid: View {
 
     var body: some View {
         let pageList = pages
-        VStack(spacing: 16) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 0) {
-                    ForEach(Array(pageList.enumerated()), id: \.offset) { pIndex, pageEntries in
+        let w = size.width
+        let clamped = min(page, max(0, pageList.count - 1))
+
+        VStack(spacing: 14) {
+            ZStack(alignment: .topLeading) {
+                // Empty-area layer: tap dismisses, click-drag swipes pages.
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .updating($dragX) { v, s, _ in s = v.translation.width }
+                            .onEnded { v in endSwipe(v, width: w, count: pageList.count) }
+                    )
+
+                HStack(spacing: 0) {
+                    ForEach(Array(pageList.enumerated()), id: \.offset) { _, pageEntries in
                         VStack {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: columns), spacing: 22) {
                                 ForEach(pageEntries, id: \.1.id) { index, entry in
@@ -207,32 +228,38 @@ struct PagedGrid: View {
                             Spacer(minLength: 0)
                         }
                         .padding(.top, 8)
-                        .padding(.horizontal, 10)
-                        .frame(width: size.width)
-                        .id(pIndex)
+                        .frame(width: w, alignment: .top)
                     }
                 }
-                .scrollTargetLayout()
+                .offset(x: -CGFloat(clamped) * w + dragX)
+                .animation(.spring(response: 0.32, dampingFraction: 0.9), value: clamped)
             }
-            .scrollTargetBehavior(.paging)
-            .scrollPosition(id: pageBinding)
+            .frame(width: w)
+            .clipped()
 
             if pageList.count > 1 {
                 HStack(spacing: 10) {
                     ForEach(0..<pageList.count, id: \.self) { i in
                         Circle()
-                            .fill(Color.white.opacity(i == page ? 0.95 : 0.35))
+                            .fill(Color.white.opacity(i == clamped ? 0.95 : 0.35))
                             .frame(width: 7, height: 7)
-                            .onTapGesture { withAnimation(.easeInOut) { page = i } }
+                            .onTapGesture { withAnimation { page = i } }
                     }
                 }
                 .padding(.bottom, 8)
             }
         }
+        .onChange(of: bus.nextPageTick) { _, _ in page = min(clamped + 1, max(0, pageList.count - 1)) }
+        .onChange(of: bus.prevPageTick) { _, _ in page = max(clamped - 1, 0) }
     }
 
-    private var pageBinding: Binding<Int?> {
-        Binding(get: { page }, set: { if let v = $0 { page = v } })
+    private func endSwipe(_ v: DragGesture.Value, width: CGFloat, count: Int) {
+        // A near-zero movement is a plain click on empty space -> dismiss.
+        if abs(v.translation.width) < 6 && abs(v.translation.height) < 6 {
+            onDismiss(); return
+        }
+        if v.translation.width < -50 { page = min(page + 1, count - 1) }
+        else if v.translation.width > 50 { page = max(page - 1, 0) }
     }
 }
 
@@ -260,7 +287,7 @@ struct EntryCell: View {
         .frame(width: cell.width, height: cell.height)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white.opacity(dropTargeted ? 0.16 : 0))
+                .fill(Color.white.opacity(dropTargeted ? 0.18 : 0.001))
         )
         .modifier(DragReorder(model: model, entry: entry, cellWidth: cell.width,
                               enabled: draggable, targeted: $dropTargeted))
@@ -302,8 +329,7 @@ struct EntryDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         targeted = false
         guard let provider = info.itemProviders(for: [UTType.text]).first else { return false }
-        // Center third of the icon => combine into a folder. Left/right thirds
-        // => reorder before/after (mirrors Launchpad's edge-vs-center behavior).
+        // Center third of the icon => folder. Left/right => reorder before/after.
         let x = info.location.x
         let combineZone = x > cellWidth * 0.3 && x < cellWidth * 0.7
         let dropAfter = x >= cellWidth * 0.7
@@ -312,7 +338,6 @@ struct EntryDropDelegate: DropDelegate {
             guard let draggedID = obj as? String, draggedID != target.id else { return }
             DispatchQueue.main.async {
                 let targetIndex = model.entries.firstIndex(where: { $0.id == target.id }) ?? 0
-
                 if combineZone, case .app = target {
                     model.combine(draggedEntryID: draggedID, ontoIndex: targetIndex)
                 } else if combineZone, case .folder(let f) = target, draggedID.hasPrefix("app:") {
@@ -342,7 +367,7 @@ struct AppIcon: View {
     @State private var draft = ""
 
     var body: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 6) {
             if let item = model.app(for: appID) {
                 Image(nsImage: AppScanner.icon(for: item))
                     .resizable()
@@ -364,7 +389,7 @@ struct AppIcon: View {
                         .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 5))
                 } else {
                     Text(model.displayName(for: appID))
-                        .font(.system(size: 12.5))
+                        .font(.system(size: 12))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -401,7 +426,7 @@ struct AppIcon: View {
     }
 }
 
-// MARK: - Folder icon (mini grid preview) + expanded overlay
+// MARK: - Folder icon + expanded overlay
 
 struct FolderIcon: View {
     @ObservedObject var model: LaunchModel
@@ -410,7 +435,7 @@ struct FolderIcon: View {
 
     var body: some View {
         let size = settings.iconSize
-        VStack(spacing: 7) {
+        VStack(spacing: 6) {
             ZStack {
                 RoundedRectangle(cornerRadius: size * 0.23)
                     .fill(.white.opacity(0.16))
@@ -431,7 +456,7 @@ struct FolderIcon: View {
             }
             if settings.showLabels {
                 Text(folder.name)
-                    .font(.system(size: 12.5))
+                    .font(.system(size: 12))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .frame(maxWidth: size + 34)

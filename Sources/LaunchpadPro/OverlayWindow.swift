@@ -14,6 +14,8 @@ final class OverlayController {
     private var panel: OverlayPanel?
     private let model: LaunchModel
     private var localMonitor: Any?
+    private var scrollAccum: CGFloat = 0
+    private var lastPageFlip: Date = .distantPast
 
     // Wired by AppDelegate so the in-launcher "…" menu can reach app-level actions.
     var onOpenSettings: () -> Void = {}
@@ -108,13 +110,20 @@ final class OverlayController {
     // Dismiss when the user presses Esc, or clicks outside handled inside SwiftUI.
     private func installLocalMonitor() {
         removeLocalMonitor()
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .scrollWheel]) { [weak self] event in
+            guard let self else { return event }
+
+            if event.type == .scrollWheel {
+                self.handleScroll(event)
+                return event
+            }
+
             if event.keyCode == 53 { // Esc
-                if self?.model.openFolderID != nil {
-                    self?.model.openFolderID = nil
+                if self.model.openFolderID != nil {
+                    self.model.openFolderID = nil
                     return nil
                 }
-                self?.hide()
+                self.hide()
                 return nil
             }
             return event
@@ -123,5 +132,26 @@ final class OverlayController {
 
     private func removeLocalMonitor() {
         if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
+    }
+
+    /// Trackpad two-finger / mouse wheel horizontal scroll flips pages.
+    private func handleScroll(_ event: NSEvent) {
+        guard model.openFolderID == nil, !model.settings.verticalScroll else { return }
+        let dx = event.scrollingDeltaX
+        let dy = event.scrollingDeltaY
+        // Only react to a predominantly horizontal gesture.
+        guard abs(dx) > abs(dy) else { scrollAccum = 0; return }
+
+        scrollAccum += dx
+        let threshold: CGFloat = 40
+        guard Date().timeIntervalSince(lastPageFlip) > 0.35 else { return }
+
+        if scrollAccum <= -threshold {
+            LauncherBus.shared.requestNextPage()
+            scrollAccum = 0; lastPageFlip = Date()
+        } else if scrollAccum >= threshold {
+            LauncherBus.shared.requestPrevPage()
+            scrollAccum = 0; lastPageFlip = Date()
+        }
     }
 }
