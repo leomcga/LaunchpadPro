@@ -51,4 +51,6 @@ struct SavedLayout: Codable {
     var slots: [Slot]
     var customNames: [String: String]   // appID -> custom name
     var hiddenApps: [String]
+    /// Gap-aware spatial arrangement: entry id per grid slot, nil = empty slot.
+    var slotIDs: [String?]?
 }

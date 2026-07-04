@@ -16,6 +16,9 @@ final class LaunchModel: ObservableObject {
     @Published private(set) var customNames: [String: String] = [:]
     /// hidden app ids (not shown on the grid)
     @Published private(set) var hiddenApps: Set<String> = []
+    /// Gap-aware spatial arrangement (entry id per slot, nil = empty slot).
+    /// Empty array means "pack from displayEntries".
+    private(set) var slotArrangement: [String?] = []
 
     private var appIndex: [String: AppItem] = [:]
 
@@ -122,6 +125,7 @@ final class LaunchModel: ObservableObject {
     func resetLayout() {
         customNames.removeAll()
         hiddenApps.removeAll()
+        slotArrangement = []
         loadedLayout = nil
         entries = apps.map { .app($0.id) }
         applySort()
@@ -304,6 +308,7 @@ final class LaunchModel: ObservableObject {
         default:
             return
         }
+        slotArrangement = []   // sorting repacks; drop manual gaps
         save()
     }
 
@@ -342,10 +347,19 @@ final class LaunchModel: ObservableObject {
         }
         let layout = SavedLayout(slots: slots,
                                  customNames: customNames,
-                                 hiddenApps: Array(hiddenApps))
+                                 hiddenApps: Array(hiddenApps),
+                                 slotIDs: slotArrangement.isEmpty ? nil : slotArrangement)
         if let data = try? JSONEncoder().encode(layout) {
             try? data.write(to: supportURL, options: .atomic)
         }
+    }
+
+    /// Persist a gap-aware arrangement from the canvas, keeping the logical
+    /// entries list (folders/hidden/sort) consistent with the compacted order.
+    func commitSlots(_ arrangement: [LaunchEntry?]) {
+        slotArrangement = arrangement.map { $0?.id }
+        settings.sortMode = 0   // manual arrangement -> custom sort
+        setDisplayOrder(arrangement.compactMap { $0 })   // updates entries + save()
     }
 
     private func load() {
@@ -355,6 +369,7 @@ final class LaunchModel: ObservableObject {
         }
         customNames = layout.customNames
         hiddenApps = Set(layout.hiddenApps)
+        slotArrangement = layout.slotIDs ?? []
         loadedLayout = layout
     }
 
