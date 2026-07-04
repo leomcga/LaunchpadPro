@@ -205,6 +205,20 @@ final class LaunchModel: ObservableObject {
         save()
     }
 
+    func reorderInFolder(_ folderID: String, from: Int, to: Int) {
+        for i in entries.indices {
+            if case .folder(var f) = entries[i], f.id == folderID {
+                guard f.appIDs.indices.contains(from) else { return }
+                let item = f.appIDs.remove(at: from)
+                let dest = to > from ? to - 1 : to
+                f.appIDs.insert(item, at: min(max(dest, 0), f.appIDs.count))
+                entries[i] = .folder(f)
+                save()
+                return
+            }
+        }
+    }
+
     func addToFolder(appID: String, folderID: String) {
         for i in entries.indices {
             if case .folder(var f) = entries[i], f.id == folderID {
