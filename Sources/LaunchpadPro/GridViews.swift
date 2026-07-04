@@ -198,7 +198,6 @@ struct PagedGrid: View {
     var onDismiss: () -> Void
 
     @State private var page = 0
-    @GestureState private var dragX: CGFloat = 0
     @State private var draggingID: String? = nil
     @State private var dragTranslation: CGSize = .zero
     @State private var cellFrames: [String: CGRect] = [:]
@@ -219,14 +218,12 @@ struct PagedGrid: View {
 
         VStack(spacing: 14) {
             ZStack(alignment: .topLeading) {
-                // Empty-area layer: tap dismisses, click-drag swipes pages.
+                // Empty-area layer: a plain tap dismisses. No drag gesture here,
+                // so it never competes with an icon's drag (paging is handled by
+                // the trackpad/wheel swipe monitor and the page dots).
                 Color.clear
                     .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .updating($dragX) { v, s, _ in s = v.translation.width }
-                            .onEnded { v in endSwipe(v, width: w, count: pageList.count) }
-                    )
+                    .onTapGesture { onDismiss() }
 
                 HStack(spacing: 0) {
                     ForEach(Array(pageList.enumerated()), id: \.offset) { _, pageEntries in
@@ -248,7 +245,7 @@ struct PagedGrid: View {
                         .frame(width: w, alignment: .top)
                     }
                 }
-                .offset(x: -CGFloat(clamped) * w + (draggingID == nil ? dragX : 0))
+                .offset(x: -CGFloat(clamped) * w)
                 .animation(.spring(response: 0.32, dampingFraction: 0.9), value: clamped)
             }
             .coordinateSpace(name: launcherSpace)
@@ -270,14 +267,6 @@ struct PagedGrid: View {
         }
         .onChange(of: bus.nextPageTick) { _, _ in page = min(clamped + 1, max(0, pageList.count - 1)) }
         .onChange(of: bus.prevPageTick) { _, _ in page = max(clamped - 1, 0) }
-    }
-
-    private func endSwipe(_ v: DragGesture.Value, width: CGFloat, count: Int) {
-        if abs(v.translation.width) < 6 && abs(v.translation.height) < 6 {
-            onDismiss(); return
-        }
-        if v.translation.width < -50 { page = min(page + 1, count - 1) }
-        else if v.translation.width > 50 { page = max(page - 1, 0) }
     }
 
     /// Resolve a custom drag: figure out which cell we were dropped on and
