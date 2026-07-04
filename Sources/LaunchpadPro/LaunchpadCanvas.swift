@@ -23,7 +23,6 @@ struct LaunchpadCanvas: View {
     @State private var pages: [[LaunchEntry]] = []
     @State private var page = 0
     @State private var draggingID: String? = nil
-    @State private var heldItem: LaunchEntry? = nil   // lifted out of `pages` during a drag
     @State private var dragPoint: CGPoint = .zero
     @State private var folderTargetID: String? = nil
     @State private var swipeOffset: CGFloat = 0
@@ -70,17 +69,10 @@ struct LaunchpadCanvas: View {
             ForEach(placedItems) { pl in
                 itemView(pl.entry)
                     .frame(width: cellW, height: cellH)
-                    .position(center(page: pl.page, index: pl.index, cp: cp))
-                    .zIndex(1)
-            }
-
-            // The lifted item follows the cursor, on top of everything.
-            if let held = heldItem {
-                itemView(held)
-                    .frame(width: cellW, height: cellH)
-                    .position(dragPoint)
-                    .zIndex(100)
-                    .allowsHitTesting(false)
+                    // The dragged item stays in its page (so its gesture keeps
+                    // firing) but is drawn at the cursor, on top.
+                    .position(pl.entry.id == draggingID ? dragPoint : center(page: pl.page, index: pl.index, cp: cp))
+                    .zIndex(pl.entry.id == draggingID ? 100 : 1)
             }
 
             if navPageCount > 1 {
@@ -102,6 +94,11 @@ struct LaunchpadCanvas: View {
         .clipped()
         .coordinateSpace(name: canvasSpace)
         .onAppear { pages = buildPages() }
+        .onChange(of: bus.resetTick) { _, _ in
+            draggingID = nil; folderTargetID = nil; folderDragID = nil; folderEjecting = false
+            swipeOffset = 0; page = 0
+            pages = buildPages()
+        }
         .onChange(of: model.displayEntries) { _, _ in if draggingID == nil { pages = buildPages() } }
         .onChange(of: bus.nextPageTick) { _, _ in withAnimation(spring) { page = min(cp + 1, navPageCount - 1) } }
         .onChange(of: bus.prevPageTick) { _, _ in withAnimation(spring) { page = max(cp - 1, 0) } }
@@ -213,13 +210,6 @@ struct LaunchpadCanvas: View {
     private func beginDrag(_ entry: LaunchEntry) {
         draggingID = entry.id
         pages = buildPages()
-        if let (sp, si) = locate(entry.id) {
-            withAnimation(flow) {
-                heldItem = pages[sp].remove(at: si)   // lift out; its page closes up
-                removeEmptyPages()
-                page = min(max(page, 0), pages.count - 1)
-            }
-        }
     }
 
     // MARK: - Geometry
@@ -273,28 +263,31 @@ struct LaunchpadCanvas: View {
     private func endDrag(at loc: CGPoint) {
         let did = draggingID
         let ft = folderTargetID
-        let held = heldItem
-        guard let did, let held else {
-            withAnimation(flow) { draggingID = nil; folderTargetID = nil; heldItem = nil }
+        guard let did else {
+            withAnimation(flow) { draggingID = nil; folderTargetID = nil }
             return
         }
         if let ft {
-            // Merge into / create a folder; the held item stays in model.entries.
+            // Merge into / create a folder.
             let ti = model.entries.firstIndex { $0.id == ft } ?? 0
             model.combine(draggedEntryID: did, ontoIndex: ti)
-            withAnimation(flow) { draggingID = nil; folderTargetID = nil; heldItem = nil }
+            withAnimation(flow) { draggingID = nil; folderTargetID = nil }
             pages = buildPages()
-        } else {
+        } else if let (sp, si) = locate(did) {
             var (tp, ti) = targetAt(loc)
             withAnimation(flow) {
+                let item = pages[sp].remove(at: si)   // remove only on release
+                if sp == tp && si < ti { ti -= 1 }
                 if tp >= pages.count { pages.append([]); tp = pages.count - 1; ti = 0 }
                 ti = min(max(ti, 0), pages[tp].count)
-                pages[tp].insert(held, at: ti)
+                pages[tp].insert(item, at: ti)
                 cascadeOverflow()
                 removeEmptyPages()
-                draggingID = nil; folderTargetID = nil; heldItem = nil
+                draggingID = nil; folderTargetID = nil
             }
             model.commitPages(pages)
+        } else {
+            withAnimation(flow) { draggingID = nil; folderTargetID = nil }
         }
     }
 

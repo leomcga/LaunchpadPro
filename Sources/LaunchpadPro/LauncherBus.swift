@@ -15,6 +15,10 @@ final class LauncherBus: ObservableObject {
     @Published var scrollEndTick: Int = 0   // bumped when the swipe ends -> snap
     var scrollDX: CGFloat = 0               // last incremental horizontal delta
 
+    // Bumped each time the launcher is shown, so the canvas can clear any
+    // interrupted drag state.
+    @Published var resetTick: Int = 0
+
     func requestNextPage() { nextPageTick &+= 1 }
     func requestPrevPage() { prevPageTick &+= 1 }
 

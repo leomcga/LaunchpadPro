@@ -37,6 +37,7 @@ final class OverlayController {
         guard let screen = NSScreen.main else { return }
         model.searchText = ""
         model.openFolderID = nil
+        LauncherBus.shared.resetTick &+= 1
 
         let panel = self.panel ?? makePanel()
         self.panel = panel
