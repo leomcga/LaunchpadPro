@@ -17,6 +17,7 @@ struct LaunchpadCanvas: View {
     @ObservedObject var settings = AppSettings.shared
     @ObservedObject var bus = LauncherBus.shared
     let size: CGSize
+    var topInset: CGFloat = 8   // push the grid below the floating search bar
     var onLaunch: (String) -> Void
     var onDismiss: () -> Void
 
@@ -36,7 +37,7 @@ struct LaunchpadCanvas: View {
     private let side: CGFloat = 46
     private let gapX: CGFloat = 16
     private let gapY: CGFloat = 20
-    private let topMargin: CGFloat = 8
+    private var topMargin: CGFloat { topInset }
     private let canvasSpace = "canvas"
     private let spring = Animation.spring(response: 0.34, dampingFraction: 0.86)
     private let flow = Animation.spring(response: 0.28, dampingFraction: 0.78)

@@ -34,26 +34,26 @@ struct LauncherRootView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             Color.black.opacity(settings.backgroundDim)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { onDismiss() }
 
-            VStack(spacing: 20) {
-                SearchField(text: $model.searchText, focused: $searchFocused,
-                            model: model,
-                            onOpenSettings: onOpenSettings, onRescan: onRescan, onQuit: onQuit)
-                    .frame(width: 420)
+            // Canvas fills the whole screen, so the open-folder backdrop dims
+            // everything uniformly (no bright strip under the search bar).
+            GridContainer(model: model, topInset: topInset + 52,
+                          onLaunch: { id in model.launch(id); onDismiss() },
+                          onDismiss: onDismiss)
+                .scaleEffect(appeared ? 1 : 1.04)
+                .opacity(appeared ? 1 : 0)
 
-                GridContainer(model: model,
-                              onLaunch: { id in model.launch(id); onDismiss() },
-                              onDismiss: onDismiss)
-            }
-            .padding(.top, topInset)
-            .padding(.bottom, 20)
-            .scaleEffect(appeared ? 1 : 1.04)
-            .opacity(appeared ? 1 : 0)
+            SearchField(text: $model.searchText, focused: $searchFocused,
+                        model: model,
+                        onOpenSettings: onOpenSettings, onRescan: onRescan, onQuit: onQuit)
+                .frame(width: 420)
+                .padding(.top, topInset)
+                .opacity(appeared ? 1 : 0)
 
             // The paged canvas renders its own in-place folder; this full-screen
             // overlay only backs the vertical-scroll mode.
@@ -146,6 +146,7 @@ struct SearchField: View {
 struct GridContainer: View {
     @ObservedObject var model: LaunchModel
     @ObservedObject var settings = AppSettings.shared
+    var topInset: CGFloat = 8
     var onLaunch: (String) -> Void
     var onDismiss: () -> Void
 
@@ -167,13 +168,13 @@ struct GridContainer: View {
                                           onLaunch: onLaunch, onDragChanged: { _, _ in }, onDragEnded: { _, _ in })
                             }
                         }
-                        .padding(.top, 8).padding(.bottom, 16)
+                        .padding(.top, topInset).padding(.bottom, 16)
                         .padding(.horizontal, gridSidePad)
                         .frame(maxWidth: .infinity, alignment: .top)
                     }
                 }
             } else {
-                LaunchpadCanvas(model: model, size: geo.size,
+                LaunchpadCanvas(model: model, size: geo.size, topInset: topInset,
                                 onLaunch: onLaunch, onDismiss: onDismiss)
             }
         }
