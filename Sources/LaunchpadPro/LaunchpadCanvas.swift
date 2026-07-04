@@ -325,8 +325,13 @@ struct LaunchpadCanvas: View {
             .padding(36)
             .frame(maxWidth: CGFloat(fCols) * (fCellW + 20) + 72)
             .background(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(.ultraThickMaterial)
+                // Fully opaque base (blocks the grid) + a thin frosted tint.
+                ZStack {
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .fill(Color(nsColor: .windowBackgroundColor))
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                }
             )
             .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.16)))
             .shadow(color: .black.opacity(0.45), radius: 36, y: 16)
