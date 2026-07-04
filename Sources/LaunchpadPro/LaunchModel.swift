@@ -167,6 +167,18 @@ final class LaunchModel: ObservableObject {
 
     // MARK: - Layout mutation (reorder + folders)
 
+    /// Commit a new top-level visible order (from the live-reordering canvas),
+    /// keeping hidden apps parked at the end so they aren't lost.
+    func setDisplayOrder(_ visible: [LaunchEntry]) {
+        var newEntries = visible
+        let visibleIDs = Set(visible.map { $0.id })
+        for e in entries where !visibleIDs.contains(e.id) {
+            if case .app(let a) = e, hiddenApps.contains(a) { newEntries.append(e) }
+        }
+        entries = newEntries
+        save()
+    }
+
     func moveEntry(from source: Int, to destination: Int) {
         guard source != destination, entries.indices.contains(source) else { return }
         let item = entries.remove(at: source)
