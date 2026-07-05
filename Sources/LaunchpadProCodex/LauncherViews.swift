@@ -135,7 +135,7 @@ private struct SearchBar: View {
             HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.90))
+                    .foregroundStyle(Color.black.opacity(0.46))
 
                 TextField("搜索应用", text: $text)
                     .textFieldStyle(.plain)
@@ -149,46 +149,30 @@ private struct SearchBar: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.66))
+                            .foregroundStyle(Color.black.opacity(0.34))
                     }
                     .buttonStyle(.plain)
                 }
 
-                Menu {
-                    Button("设置…") { onOpenSettings() }
-                    Divider()
-                    Picker("排序方式", selection: Binding(
-                        get: { settings.sortMode },
-                        set: {
-                            settings.sortMode = $0
-                            model.applySort()
-                        }
-                    )) {
-                        Text("自定义").tag(0)
-                        Text("名称").tag(1)
-                        Text("添加日期").tag(2)
-                    }
-                    Picker("浏览样式", selection: $settings.verticalScroll) {
-                        Text("分页").tag(false)
-                        Text("滚动").tag(true)
-                    }
-                    Divider()
-                    Button("重新扫描 App") { onRescan() }
-                    Button("退出") { onQuit() }
-                } label: {
-                    ZStack {
-                        Color.white.opacity(0.001)
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.86))
-                    }
-                    .frame(width: 62, height: 34)
-                    .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+                ZStack(alignment: .trailing) {
+                    SearchMenuHitTarget(
+                        model: model,
+                        settings: settings,
+                        onOpenSettings: onOpenSettings,
+                        onRescan: onRescan,
+                        onQuit: onQuit
+                    )
+                    .frame(width: 96, height: 34)
+
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color.black.opacity(0.46))
+                        .frame(width: 18, height: 18)
+                        .padding(.trailing, 10)
+                        .allowsHitTesting(false)
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
+                .frame(width: 96, height: 34)
                 .help("设置与排序")
-                .fixedSize()
             }
             .padding(.leading, 12)
             .padding(.trailing, 0)
@@ -223,6 +207,145 @@ private struct SearchBar: View {
             )
             .shadow(color: .white.opacity(0.10), radius: 1, y: -1)
             .shadow(color: .black.opacity(0.24), radius: 10, y: 5)
+        }
+    }
+}
+
+private struct SearchMenuHitTarget: NSViewRepresentable {
+    var model: LaunchModel
+    var settings: AppSettings
+    var onOpenSettings: () -> Void
+    var onRescan: () -> Void
+    var onQuit: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            model: model,
+            settings: settings,
+            onOpenSettings: onOpenSettings,
+            onRescan: onRescan,
+            onQuit: onQuit
+        )
+    }
+
+    func makeNSView(context: Context) -> MenuHitView {
+        let view = MenuHitView()
+        view.coordinator = context.coordinator
+        view.toolTip = "设置与排序"
+        return view
+    }
+
+    func updateNSView(_ nsView: MenuHitView, context: Context) {
+        context.coordinator.model = model
+        context.coordinator.settings = settings
+        context.coordinator.onOpenSettings = onOpenSettings
+        context.coordinator.onRescan = onRescan
+        context.coordinator.onQuit = onQuit
+    }
+
+    final class MenuHitView: NSView {
+        weak var coordinator: Coordinator?
+
+        override func mouseDown(with event: NSEvent) {
+            coordinator?.showMenu(from: self)
+        }
+
+        override func resetCursorRects() {
+            addCursorRect(bounds, cursor: .pointingHand)
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var model: LaunchModel
+        var settings: AppSettings
+        var onOpenSettings: () -> Void
+        var onRescan: () -> Void
+        var onQuit: () -> Void
+
+        init(
+            model: LaunchModel,
+            settings: AppSettings,
+            onOpenSettings: @escaping () -> Void,
+            onRescan: @escaping () -> Void,
+            onQuit: @escaping () -> Void
+        ) {
+            self.model = model
+            self.settings = settings
+            self.onOpenSettings = onOpenSettings
+            self.onRescan = onRescan
+            self.onQuit = onQuit
+        }
+
+        func showMenu(from view: NSView) {
+            let menu = NSMenu()
+
+            addItem("设置…", to: menu, action: #selector(openSettings))
+            menu.addItem(.separator())
+
+            let sortRoot = NSMenuItem(title: "排序方式", action: nil, keyEquivalent: "")
+            let sortMenu = NSMenu()
+            addSortItem("自定义", value: 0, to: sortMenu)
+            addSortItem("名称", value: 1, to: sortMenu)
+            addSortItem("添加日期", value: 2, to: sortMenu)
+            sortRoot.submenu = sortMenu
+            menu.addItem(sortRoot)
+
+            let browseRoot = NSMenuItem(title: "浏览样式", action: nil, keyEquivalent: "")
+            let browseMenu = NSMenu()
+            addBrowseItem("分页", verticalScroll: false, to: browseMenu)
+            addBrowseItem("滚动", verticalScroll: true, to: browseMenu)
+            browseRoot.submenu = browseMenu
+            menu.addItem(browseRoot)
+
+            menu.addItem(.separator())
+            addItem("重新扫描 App", to: menu, action: #selector(rescan))
+            addItem("退出", to: menu, action: #selector(quit))
+
+            menu.popUp(positioning: nil, at: NSPoint(x: 6, y: -4), in: view)
+        }
+
+        private func addItem(_ title: String, to menu: NSMenu, action: Selector) {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
+
+        private func addSortItem(_ title: String, value: Int, to menu: NSMenu) {
+            let item = NSMenuItem(title: title, action: #selector(setSortMode(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = value
+            item.state = settings.sortMode == value ? .on : .off
+            menu.addItem(item)
+        }
+
+        private func addBrowseItem(_ title: String, verticalScroll: Bool, to menu: NSMenu) {
+            let item = NSMenuItem(title: title, action: #selector(setVerticalScroll(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = verticalScroll ? 1 : 0
+            item.state = settings.verticalScroll == verticalScroll ? .on : .off
+            menu.addItem(item)
+        }
+
+        @objc private func openSettings() {
+            onOpenSettings()
+        }
+
+        @objc private func setSortMode(_ sender: NSMenuItem) {
+            settings.sortMode = sender.tag
+            model.applySort()
+        }
+
+        @objc private func setVerticalScroll(_ sender: NSMenuItem) {
+            settings.verticalScroll = sender.tag == 1
+        }
+
+        @objc private func rescan() {
+            onRescan()
+        }
+
+        @objc private func quit() {
+            onQuit()
         }
     }
 }
