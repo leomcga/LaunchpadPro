@@ -7,12 +7,13 @@ APP_NAME="LaunchpadPro"
 EXECUTABLE_NAME="LaunchpadProCodex"
 DISPLAY_NAME="LaunchpadPro"
 BUNDLE_ID="com.leo.launchpadprocodex"
-BUILD_DIR=".build/release"
+BUILD_DIR=".build/apple/Products/Release"
 APP_DIR="build/${APP_NAME}.app"
 CONTENTS="${APP_DIR}/Contents"
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 
-echo "==> swift build -c release"
-swift build -c release
+echo "==> swift build -c release --arch arm64 --arch x86_64"
+swift build -c release --arch arm64 --arch x86_64
 
 echo "==> assembling ${APP_DIR}"
 rm -rf "${APP_DIR}"
@@ -53,7 +54,12 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
 </plist>
 PLIST
 
-echo "==> ad-hoc signing"
-codesign --force --deep --sign - "${APP_DIR}" 2>/dev/null || codesign --force --sign - "${APP_DIR}"
+if [[ -n "${SIGN_IDENTITY}" ]]; then
+    echo "==> signing with ${SIGN_IDENTITY}"
+    codesign --force --deep --options runtime --timestamp --sign "${SIGN_IDENTITY}" "${APP_DIR}"
+else
+    echo "==> ad-hoc signing"
+    codesign --force --deep --sign - "${APP_DIR}" 2>/dev/null || codesign --force --sign - "${APP_DIR}"
+fi
 
 echo "==> done: ${APP_DIR}"

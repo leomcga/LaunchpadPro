@@ -1,52 +1,102 @@
 # LaunchpadPro
 
-macOS 原生启动台替代品：全屏分页网格、搜索、文件夹、拖拽排序、右键管理、菜单栏常驻、全局快捷键、触发角、开机自启与本地持久化。
+LaunchpadPro is a native macOS app launcher built with SwiftUI and AppKit. It gives you a fast full-screen grid for opening apps, organizing folders, searching, and keeping multiple saved layouts.
 
-## 使用
+## Highlights
 
-- 唤起启动器：`⌥ Option + 空格`，或点击菜单栏网格图标
-- 搜索：打开后直接输入
-- 打开 App：单击图标
-- 拖拽排序：拖动图标到目标位置
-- 建文件夹：把一个 App 拖到另一个 App 中心
-- 文件夹：单击打开，点标题重命名，文件夹内可排序，拖出可移出
-- 右键 App：打开、重命名、访达显示、隐藏、卸载到废纸篓
-- 布局记忆：设置 → 高级里最多保存 3 个布局快照，可随时恢复
-- 关闭：`Esc` 或点击空白处
+- Full-screen paged app grid
+- Fast app search
+- Drag-and-drop app ordering
+- Folder creation, renaming, scrolling, and drag-out behavior
+- Trackpad-friendly page swiping with damped motion
+- Menu bar launcher with optional visibility
+- Global hotkey and hot corner support
+- Up to 3 saved layout memories
+- Local-only data storage
+- Universal macOS build for Apple Silicon and Intel Macs
 
-## 构建
+## Download
+
+Download `LaunchpadPro.dmg` from the GitHub Releases page, open it, then drag `LaunchpadPro.app` into `Applications`.
+
+## Requirements
+
+- macOS 26 or later
+- Xcode 26 or later for local builds
+
+## Usage
+
+- Open launcher: `Option + Space`, menu bar icon, hot corner, or `launchpadpro://show`
+- Search: type immediately after opening
+- Open app: click an app icon
+- Reorder: drag an app to a new position
+- Create folder: drag one app onto another app
+- Rename folder: open a folder and click its title
+- Save layouts: Settings -> Advanced -> Layout Memory
+- Close launcher: `Esc` or click outside
+
+## Build
 
 ```bash
-cd ~/本地/Project_Git/LaunchpadPro
-swift build -c release
+cd /Users/leo/本地/Project_Git/LaunchpadPro
 ./bundle.sh
 ```
 
-`.app` 输出在：
+The app bundle is created at:
 
 ```text
 build/LaunchpadPro.app
 ```
 
-## 部署
+`bundle.sh` builds a universal binary:
 
-```bash
-./deploy.sh
+```text
+arm64 + x86_64
 ```
 
-部署到 `/Applications/LaunchpadPro.app`。
+## Build DMG
 
-## 本地数据
+```bash
+./dmg.sh
+```
 
-- 布局、文件夹、重命名、隐藏：`~/Library/Application Support/LaunchpadPro/layout.json`
-- 设置：`UserDefaults`
+The disk image is created at:
 
-## 代码结构
+```text
+build/LaunchpadPro.dmg
+```
 
-- `AppDelegate.swift`：菜单栏、快捷键、触发角、登录项
-- `OverlayController.swift`：全屏覆盖窗口、窗口层级毛玻璃、滚轮/触控板翻页
-- `LaunchModel.swift`：App、文件夹、布局和持久化
-- `LauncherViews.swift`：根视图、搜索栏、图标、文件夹浮层
-- `PagedLauncherView.swift`：分页网格、拖拽排序、建文件夹、拖出文件夹落点
-- `SettingsView.swift`：设置窗口
-- `AppScanner.swift`：扫描本机 App 和图标缓存
+If you have a Developer ID certificate installed, pass it with `SIGN_IDENTITY`:
+
+```bash
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./dmg.sh
+```
+
+Without `SIGN_IDENTITY`, the app is ad-hoc signed for local testing.
+
+## Local Data
+
+- Layout, folders, custom names, hidden apps, and layout memories:
+
+```text
+~/Library/Application Support/LaunchpadPro/layout.json
+```
+
+- Settings are stored in `UserDefaults`.
+
+## Project Structure
+
+- `AppDelegate.swift`: app lifecycle, menu bar, hotkey, hot corners, login item, URL scheme
+- `OverlayController.swift`: full-screen overlay window and trackpad paging input
+- `LaunchModel.swift`: app list, folders, layout persistence, layout memories
+- `LauncherViews.swift`: root launcher UI, search bar, app icons, vertical mode folder overlay
+- `PagedLauncherView.swift`: paged grid, drag ordering, folder interactions
+- `SettingsView.swift`: settings window
+- `AppScanner.swift`: app discovery and icon lookup
+- `bundle.sh`: universal app bundle builder
+- `dmg.sh`: DMG builder
+- `deploy.sh`: local install and restart helper
+
+## License
+
+MIT

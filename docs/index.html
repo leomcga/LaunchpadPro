@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LaunchpadPro</title>
+  <meta name="description" content="LaunchpadPro 是一个原生 macOS 应用启动器，支持分页网格、搜索、文件夹、布局记忆和触控板翻页。">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #132033;
+      --muted: #60708a;
+      --line: rgba(19, 32, 51, 0.12);
+      --blue: #2f7df6;
+      --blue-2: #8eb8ff;
+      --panel: rgba(255, 255, 255, 0.72);
+      --shadow: rgba(37, 70, 130, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(255, 223, 138, 0.34), transparent 30%),
+        radial-gradient(circle at 82% 8%, rgba(116, 173, 255, 0.36), transparent 32%),
+        linear-gradient(180deg, #f5f9ff 0%, #eaf2ff 44%, #f8fbff 100%);
+      min-height: 100vh;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      box-shadow: 0 10px 26px var(--shadow);
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 16px 36px rgba(19, 32, 51, 0.18);
+    }
+
+    .button.secondary {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--line);
+      box-shadow: none;
+      backdrop-filter: blur(18px);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 430px;
+      gap: 56px;
+      align-items: center;
+      min-height: 620px;
+      padding: 54px 0 92px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(48px, 8vw, 92px);
+      line-height: 0.92;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      margin: 24px 0 0;
+      max-width: 620px;
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.62;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 34px;
+    }
+
+    .device {
+      position: relative;
+      min-height: 430px;
+      border-radius: 30px;
+      background: rgba(255, 255, 255, 0.46);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      box-shadow: 0 30px 70px var(--shadow);
+      backdrop-filter: blur(28px);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+    }
+
+    .device::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.82), transparent 42%),
+        radial-gradient(circle at 50% 80%, rgba(47, 125, 246, 0.18), transparent 38%);
+      pointer-events: none;
+    }
+
+    .device img {
+      position: relative;
+      width: min(72%, 310px);
+      filter: drop-shadow(0 34px 42px rgba(47, 105, 205, 0.28));
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      padding: 0 0 84px;
+    }
+
+    .card {
+      min-height: 170px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 18px 42px rgba(50, 80, 130, 0.08);
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    .card p {
+      margin: 12px 0 0;
+      color: var(--muted);
+      line-height: 1.62;
+      font-size: 15px;
+    }
+
+    footer {
+      padding: 34px 0 46px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 860px) {
+      nav {
+        display: none;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        gap: 34px;
+        padding-top: 34px;
+      }
+
+      .device {
+        min-height: 340px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="#">
+        <img src="assets/launchpad-logo.png" alt="">
+        <span>LaunchpadPro</span>
+      </a>
+      <nav>
+        <a href="#features">功能</a>
+        <a href="https://github.com/leomcga/LaunchpadPro">GitHub</a>
+        <a class="button secondary" href="https://github.com/leomcga/LaunchpadPro/releases">下载</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <h1>LaunchpadPro</h1>
+          <p>一个安静、快速、原生的 macOS 应用启动器。打开、搜索、整理、保存布局，所有数据都留在本机。</p>
+          <div class="actions">
+            <a class="button" href="https://github.com/leomcga/LaunchpadPro/releases">下载 DMG</a>
+            <a class="button secondary" href="https://github.com/leomcga/LaunchpadPro">查看源码</a>
+          </div>
+        </div>
+        <div class="device" aria-label="LaunchpadPro app icon">
+          <img src="assets/launchpad-logo.png" alt="LaunchpadPro">
+        </div>
+      </section>
+
+      <section class="grid" id="features">
+        <article class="card">
+          <h2>全屏分页网格</h2>
+          <p>以熟悉的网格方式浏览应用，支持触控板横向翻页和键鼠操作。</p>
+        </article>
+        <article class="card">
+          <h2>文件夹整理</h2>
+          <p>拖拽创建文件夹，重命名、移入、移出。内容很多时自动在文件夹内滚动。</p>
+        </article>
+        <article class="card">
+          <h2>布局记忆</h2>
+          <p>最多保存 3 个布局快照。不同工作状态之间，可以一键恢复。</p>
+        </article>
+        <article class="card">
+          <h2>快速搜索</h2>
+          <p>打开后直接输入应用名，快速过滤并启动目标应用。</p>
+        </article>
+        <article class="card">
+          <h2>多种唤起方式</h2>
+          <p>支持快捷键、菜单栏、触发角和 URL Scheme，按你的习惯打开。</p>
+        </article>
+        <article class="card">
+          <h2>Universal Build</h2>
+          <p>DMG 内的应用是通用二进制，同时支持 Apple Silicon 和 Intel Mac。</p>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      LaunchpadPro is open source under the MIT License.
+    </footer>
+  </div>
+</body>
+</html>
