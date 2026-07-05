@@ -182,15 +182,16 @@ private struct SearchBar: View {
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(.white.opacity(0.86))
                     }
-                    .frame(width: 38, height: 30)
-                    .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                    .frame(width: 62, height: 34)
+                    .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .help("设置与排序")
                 .fixedSize()
             }
-            .padding(.horizontal, 12)
+            .padding(.leading, 12)
+            .padding(.trailing, 0)
             .frame(height: 34)
             .glassEffect(.regular.tint(Color.white.opacity(0.11)).interactive(), in: .capsule)
             .overlay(
