@@ -176,14 +176,18 @@ private struct SearchBar: View {
                     Button("重新扫描 App") { onRescan() }
                     Button("退出") { onQuit() }
                 } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.86))
-                        .frame(width: 18, height: 18)
-                        .contentShape(Circle())
+                    ZStack {
+                        Color.white.opacity(0.001)
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.86))
+                    }
+                    .frame(width: 38, height: 30)
+                    .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
+                .help("设置与排序")
                 .fixedSize()
             }
             .padding(.horizontal, 12)
