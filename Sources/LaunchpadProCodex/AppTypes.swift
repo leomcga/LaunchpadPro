@@ -48,7 +48,7 @@ enum LaunchEntry: Identifiable, Hashable {
 }
 
 struct SavedLayout: Codable {
-    struct Slot: Codable {
+    struct Slot: Codable, Hashable {
         var kind: String
         var appID: String?
         var folder: FolderRecord?
@@ -58,4 +58,16 @@ struct SavedLayout: Codable {
     var customNames: [String: String]
     var hiddenApps: [String]
     var pageIDs: [[String]]
+    var layoutMemories: [LayoutMemory]?
+}
+
+struct LayoutMemory: Codable, Identifiable, Hashable {
+    var slot: Int
+    var savedAt: Double
+    var slots: [SavedLayout.Slot]
+    var customNames: [String: String]
+    var hiddenApps: [String]
+    var pageIDs: [[String]]
+
+    var id: Int { slot }
 }

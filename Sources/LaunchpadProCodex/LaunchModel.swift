@@ -11,6 +11,7 @@ final class LaunchModel: ObservableObject {
 
     @Published private(set) var customNames: [String: String] = [:]
     @Published private(set) var hiddenApps: Set<String> = []
+    @Published private(set) var layoutMemories: [LayoutMemory] = []
 
     private(set) var pageArrangement: [[String]] = []
     private var appIndex: [String: AppRecord] = [:]
@@ -149,6 +150,59 @@ final class LaunchModel: ObservableObject {
         loadedLayout = nil
         entries = apps.map { .app($0.id) }
         settings.sortMode = 0
+        save()
+    }
+
+    func layoutMemory(slot: Int) -> LayoutMemory? {
+        layoutMemories.first { $0.slot == slot }
+    }
+
+    func saveLayoutMemory(slot: Int) {
+        guard (0..<3).contains(slot) else { return }
+
+        let memory = LayoutMemory(
+            slot: slot,
+            savedAt: Date().timeIntervalSince1970,
+            slots: currentSlots(),
+            customNames: customNames,
+            hiddenApps: Array(hiddenApps),
+            pageIDs: pageArrangement
+        )
+
+        var next = layoutMemories.filter { $0.slot != slot }
+        next.append(memory)
+        layoutMemories = next
+            .filter { (0..<3).contains($0.slot) }
+            .sorted { $0.slot < $1.slot }
+        save()
+    }
+
+    @discardableResult
+    func restoreLayoutMemory(slot: Int) -> Bool {
+        guard let memory = layoutMemory(slot: slot) else {
+            NSSound.beep()
+            return false
+        }
+
+        customNames = memory.customNames
+        hiddenApps = Set(memory.hiddenApps)
+        pageArrangement = memory.pageIDs
+        loadedLayout = SavedLayout(
+            slots: memory.slots,
+            customNames: memory.customNames,
+            hiddenApps: memory.hiddenApps,
+            pageIDs: memory.pageIDs,
+            layoutMemories: layoutMemories
+        )
+        rebuildEntries(apps)
+        settings.sortMode = 0
+        save()
+        objectWillChange.send()
+        return true
+    }
+
+    func deleteLayoutMemory(slot: Int) {
+        layoutMemories.removeAll { $0.slot == slot }
         save()
     }
 
@@ -370,6 +424,9 @@ final class LaunchModel: ObservableObject {
         customNames = layout.customNames
         hiddenApps = Set(layout.hiddenApps)
         pageArrangement = layout.pageIDs
+        layoutMemories = (layout.layoutMemories ?? [])
+            .filter { (0..<3).contains($0.slot) }
+            .sorted { $0.slot < $1.slot }
         loadedLayout = layout
     }
 
@@ -413,24 +470,27 @@ final class LaunchModel: ObservableObject {
     }
 
     private func save() {
-        let slots = entries.map { entry -> SavedLayout.Slot in
+        let layout = SavedLayout(
+            slots: currentSlots(),
+            customNames: customNames,
+            hiddenApps: Array(hiddenApps),
+            pageIDs: pageArrangement,
+            layoutMemories: layoutMemories
+        )
+
+        if let data = try? JSONEncoder().encode(layout) {
+            try? data.write(to: layoutURL, options: .atomic)
+        }
+    }
+
+    private func currentSlots() -> [SavedLayout.Slot] {
+        entries.map { entry -> SavedLayout.Slot in
             switch entry {
             case .app(let appID):
                 return .init(kind: "app", appID: appID, folder: nil)
             case .folder(let folder):
                 return .init(kind: "folder", appID: nil, folder: folder)
             }
-        }
-
-        let layout = SavedLayout(
-            slots: slots,
-            customNames: customNames,
-            hiddenApps: Array(hiddenApps),
-            pageIDs: pageArrangement
-        )
-
-        if let data = try? JSONEncoder().encode(layout) {
-            try? data.write(to: layoutURL, options: .atomic)
         }
     }
 

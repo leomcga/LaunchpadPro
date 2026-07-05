@@ -292,6 +292,12 @@ private struct AdvancedSettingsTab: View {
 
     var body: some View {
         Form {
+            Section("布局记忆") {
+                ForEach(0..<3, id: \.self) { slot in
+                    LayoutMemoryRow(model: model, slot: slot)
+                }
+            }
+
             Section("维护") {
                 Button("重新扫描已安装的 App") { model.reload() }
                 Button("重置布局、文件夹、重命名和隐藏", role: .destructive) {
@@ -320,6 +326,47 @@ private struct AdvancedSettingsTab: View {
         if alert.runModal() == .alertFirstButtonReturn {
             model.resetLayout()
         }
+    }
+}
+
+private struct LayoutMemoryRow: View {
+    @ObservedObject var model: LaunchModel
+    let slot: Int
+
+    private var memory: LayoutMemory? {
+        model.layoutMemory(slot: slot)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("布局 \(slot + 1)")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(memory.map(savedDescription) ?? "未保存")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(memory == nil ? "保存" : "覆盖") {
+                model.saveLayoutMemory(slot: slot)
+            }
+
+            Button("恢复") {
+                model.restoreLayoutMemory(slot: slot)
+            }
+            .disabled(memory == nil)
+
+            Button("删除", role: .destructive) {
+                model.deleteLayoutMemory(slot: slot)
+            }
+            .disabled(memory == nil)
+        }
+    }
+
+    private func savedDescription(_ memory: LayoutMemory) -> String {
+        Date(timeIntervalSince1970: memory.savedAt).formatted(date: .numeric, time: .shortened)
     }
 }
 
