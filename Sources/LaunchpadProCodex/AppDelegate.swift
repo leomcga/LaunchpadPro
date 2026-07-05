@@ -8,9 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let model = LaunchModel()
     private let settings = AppSettings.shared
     private var overlay: OverlayController!
-    private var statusItem: NSStatusItem!
+    private var statusItem: NSStatusItem?
     private var settingsController: SettingsWindowController?
-    private var globalMouseMonitor: Any?
+    private var hotCornerTimer: Timer?
     private var lastCornerHit = Date.distantPast
     private var pendingShowOnLaunch = false
 
@@ -22,12 +22,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.onRescan = { [weak self] in self?.rescan() }
         overlay.onQuit = { NSApp.terminate(nil) }
 
-        setupStatusItem()
+        applyMenuBarIcon()
         setupHotKey()
         setupHotCorners()
         applyLaunchAtLogin()
 
         settings.onHotKeyChanged = { [weak self] in self?.setupHotKey() }
+        settings.onMenuBarIconChanged = { [weak self] in self?.applyMenuBarIcon() }
 
         if pendingShowOnLaunch {
             pendingShowOnLaunch = false
@@ -52,7 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        for url in urls where url.scheme == "launchpadprocodex" {
+        for url in urls where ["launchpadpro", "launchpadprocodex"].contains(url.scheme?.lowercased()) {
             switch url.host?.lowercased() {
             case "toggle":
                 overlay.toggle()
@@ -65,8 +66,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupStatusItem() {
+        guard statusItem == nil else { return }
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        guard let button = statusItem.button else { return }
+        guard let button = statusItem?.button else { return }
 
         button.image = AppBranding.menuBarIcon()
         button.action = #selector(statusItemClicked)
@@ -74,7 +77,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
     }
 
+    private func applyMenuBarIcon() {
+        if settings.showMenuBarIcon {
+            setupStatusItem()
+        } else if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+            self.statusItem = nil
+        }
+    }
+
     @objc private func statusItemClicked() {
+        guard let statusItem else { return }
+
         if NSApp.currentEvent?.type == .rightMouseUp {
             statusItem.menu = makeMenu()
             statusItem.button?.performClick(nil)
@@ -91,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "重新扫描 App", action: #selector(rescan), keyEquivalent: "r")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "退出 LaunchpadPro Codex", action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(withTitle: "退出 LaunchpadPro", action: #selector(quit), keyEquivalent: "q")
         menu.items.forEach { $0.target = self }
         return menu
     }
@@ -105,7 +119,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsController = SettingsWindowController(
                 model: model,
                 onHotCornersChanged: { [weak self] in self?.setupHotCorners() },
-                onLaunchAtLoginChanged: { [weak self] in self?.applyLaunchAtLogin() }
+                onLaunchAtLoginChanged: { [weak self] in self?.applyLaunchAtLogin() },
+                onMenuBarIconChanged: { [weak self] in self?.applyMenuBarIcon() }
             )
         }
 
@@ -143,24 +158,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupHotCorners() {
-        if let globalMouseMonitor {
-            NSEvent.removeMonitor(globalMouseMonitor)
-            self.globalMouseMonitor = nil
-        }
+        hotCornerTimer?.invalidate()
+        hotCornerTimer = nil
 
         guard settings.hotCornersEnabled else { return }
 
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.12, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.checkHotCorner() }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        hotCornerTimer = timer
     }
 
     private func checkHotCorner() {
-        guard let screen = NSScreen.main else { return }
+        guard let screen = NSScreen.screens.first(where: { $0.frame.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) }) ?? NSScreen.main else {
+            return
+        }
 
         let frame = screen.frame
         let location = NSEvent.mouseLocation
-        let margin: CGFloat = 3
+        let margin: CGFloat = 18
 
         let hit: Bool
         switch settings.hotCorner {

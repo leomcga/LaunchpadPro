@@ -436,8 +436,18 @@ final class LaunchModel: ObservableObject {
 
     private var layoutURL: URL {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let folder = root.appendingPathComponent("LaunchpadProCodex", isDirectory: true)
+        let folder = root.appendingPathComponent("LaunchpadPro", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return folder.appendingPathComponent("layout.json")
+        let current = folder.appendingPathComponent("layout.json")
+
+        let legacy = root
+            .appendingPathComponent("LaunchpadProCodex", isDirectory: true)
+            .appendingPathComponent("layout.json")
+        if !FileManager.default.fileExists(atPath: current.path),
+           FileManager.default.fileExists(atPath: legacy.path) {
+            try? FileManager.default.copyItem(at: legacy, to: current)
+        }
+
+        return current
     }
 }

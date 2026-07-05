@@ -6,6 +6,7 @@ enum AppScanner {
             URL(fileURLWithPath: "/Applications", isDirectory: true),
             URL(fileURLWithPath: "/System/Applications", isDirectory: true),
             URL(fileURLWithPath: "/System/Applications/Utilities", isDirectory: true),
+            URL(fileURLWithPath: "/System/Cryptexes/App/System/Applications", isDirectory: true),
             URL(fileURLWithPath: "/Applications/Utilities", isDirectory: true)
         ]
         values.append(FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true))

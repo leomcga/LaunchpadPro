@@ -6,16 +6,18 @@ final class SettingsWindowController: NSWindowController {
     init(
         model: LaunchModel,
         onHotCornersChanged: @escaping () -> Void,
-        onLaunchAtLoginChanged: @escaping () -> Void
+        onLaunchAtLoginChanged: @escaping () -> Void,
+        onMenuBarIconChanged: @escaping () -> Void
     ) {
         let view = SettingsView(
             model: model,
             onHotCornersChanged: onHotCornersChanged,
-            onLaunchAtLoginChanged: onLaunchAtLoginChanged
+            onLaunchAtLoginChanged: onLaunchAtLoginChanged,
+            onMenuBarIconChanged: onMenuBarIconChanged
         )
         let controller = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: controller)
-        window.title = "LaunchpadPro Codex 设置"
+        window.title = "LaunchpadPro 设置"
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.setContentSize(NSSize(width: 540, height: 500))
         window.isReleasedWhenClosed = false
@@ -32,29 +34,109 @@ struct SettingsView: View {
 
     var onHotCornersChanged: () -> Void
     var onLaunchAtLoginChanged: () -> Void
+    var onMenuBarIconChanged: () -> Void
+
+    @State private var selectedTab: SettingsTab = .general
 
     var body: some View {
-        TabView {
+        VStack(spacing: 0) {
+            SettingsTabBar(selection: $selectedTab)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
+
+            Divider()
+                .opacity(0.45)
+
+            tabContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 540, height: 500)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .general:
             GeneralSettingsTab(
                 settings: settings,
                 onHotCornersChanged: onHotCornersChanged,
-                onLaunchAtLoginChanged: onLaunchAtLoginChanged
+                onLaunchAtLoginChanged: onLaunchAtLoginChanged,
+                onMenuBarIconChanged: onMenuBarIconChanged
             )
-            .tabItem { Label("通用", systemImage: "gearshape") }
-
+        case .interface:
             InterfaceSettingsTab(model: model, settings: settings)
-                .tabItem { Label("界面", systemImage: "square.grid.2x2") }
-
+        case .apps:
             AppsSettingsTab(model: model)
-                .tabItem { Label("Apps", systemImage: "app.badge") }
-
+        case .advanced:
             AdvancedSettingsTab(model: model)
-                .tabItem { Label("高级", systemImage: "slider.horizontal.3") }
-
+        case .about:
             AboutSettingsTab()
-                .tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 540, height: 500)
+    }
+}
+
+private enum SettingsTab: CaseIterable, Identifiable {
+    case general
+    case interface
+    case apps
+    case advanced
+    case about
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .general: return "通用"
+        case .interface: return "界面"
+        case .apps: return "Apps"
+        case .advanced: return "高级"
+        case .about: return "关于"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: return "gearshape"
+        case .interface: return "square.grid.2x2"
+        case .apps: return "app.badge"
+        case .advanced: return "slider.horizontal.3"
+        case .about: return "info.circle"
+        }
+    }
+}
+
+private struct SettingsTabBar: View {
+    @Binding var selection: SettingsTab
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(SettingsTab.allCases) { tab in
+                Button {
+                    withAnimation(.snappy(duration: 0.18)) {
+                        selection = tab
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: tab.symbol)
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(tab.title)
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundStyle(selection == tab ? Color.white : Color.primary.opacity(0.72))
+                    .frame(width: 88, height: 30)
+                    .background {
+                        if selection == tab {
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(Color.accentColor)
+                                .shadow(color: Color.accentColor.opacity(0.24), radius: 5, y: 2)
+                        }
+                    }
+                    .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }
 
@@ -63,6 +145,7 @@ private struct GeneralSettingsTab: View {
 
     var onHotCornersChanged: () -> Void
     var onLaunchAtLoginChanged: () -> Void
+    var onMenuBarIconChanged: () -> Void
 
     var body: some View {
         Form {
@@ -95,6 +178,9 @@ private struct GeneralSettingsTab: View {
             Section("启动") {
                 Toggle("开机自动启动", isOn: $settings.launchAtLogin)
                     .onChange(of: settings.launchAtLogin) { _, _ in onLaunchAtLoginChanged() }
+
+                Toggle("显示菜单栏图标", isOn: $settings.showMenuBarIcon)
+                    .onChange(of: settings.showMenuBarIcon) { _, _ in onMenuBarIconChanged() }
             }
         }
         .formStyle(.grouped)
@@ -214,7 +300,7 @@ private struct AdvancedSettingsTab: View {
             }
 
             Section("数据") {
-                Text("~/Library/Application Support/LaunchpadProCodex/layout.json")
+                Text("~/Library/Application Support/LaunchpadPro/layout.json")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
@@ -226,7 +312,7 @@ private struct AdvancedSettingsTab: View {
 
     private func confirmReset() {
         let alert = NSAlert()
-        alert.messageText = "重置 LaunchpadPro Codex？"
+        alert.messageText = "重置 LaunchpadPro？"
         alert.informativeText = "文件夹、排序、重命名和隐藏记录都会清除。"
         alert.alertStyle = .warning
         alert.addButton(withTitle: "重置")
@@ -251,7 +337,7 @@ private struct AboutSettingsTab: View {
                     .foregroundStyle(.tint)
             }
 
-            Text("LaunchpadPro Codex")
+            Text("LaunchpadPro")
                 .font(.title2)
                 .bold()
 

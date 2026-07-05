@@ -1,6 +1,6 @@
-# LaunchpadProCodex
+# LaunchpadPro
 
-Codex 版 macOS 原生启动台替代品。目标是对齐原需求里的 LaunchpadPro：全屏分页网格、搜索、文件夹、拖拽排序、右键管理、菜单栏常驻、全局快捷键、触发角、开机自启与本地持久化。
+macOS 原生启动台替代品：全屏分页网格、搜索、文件夹、拖拽排序、右键管理、菜单栏常驻、全局快捷键、触发角、开机自启与本地持久化。
 
 ## 使用
 
@@ -16,7 +16,7 @@ Codex 版 macOS 原生启动台替代品。目标是对齐原需求里的 Launch
 ## 构建
 
 ```bash
-cd ~/本地/Project_Git/LaunchpadProCodex
+cd ~/本地/Project_Git/LaunchpadPro
 swift build -c release
 ./bundle.sh
 ```
@@ -24,7 +24,7 @@ swift build -c release
 `.app` 输出在：
 
 ```text
-build/LaunchpadProCodex.app
+build/LaunchpadPro.app
 ```
 
 ## 部署
@@ -33,12 +33,12 @@ build/LaunchpadProCodex.app
 ./deploy.sh
 ```
 
-部署到 `/Applications/LaunchpadProCodex.app`。Bundle ID 与 Claude 版不同：`com.leo.launchpadprocodex`，不会覆盖 `/Applications/LaunchpadPro.app`。
+部署到 `/Applications/LaunchpadPro.app`。
 
 ## 本地数据
 
-- 布局、文件夹、重命名、隐藏：`~/Library/Application Support/LaunchpadProCodex/layout.json`
-- 设置：`UserDefaults`，key 前缀 `codex.`
+- 布局、文件夹、重命名、隐藏：`~/Library/Application Support/LaunchpadPro/layout.json`
+- 设置：`UserDefaults`
 
 ## 代码结构
 

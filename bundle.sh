@@ -3,8 +3,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-APP_NAME="LaunchpadProCodex"
-DISPLAY_NAME="LaunchpadPro Codex"
+APP_NAME="LaunchpadPro"
+EXECUTABLE_NAME="LaunchpadProCodex"
+DISPLAY_NAME="LaunchpadPro"
 BUNDLE_ID="com.leo.launchpadprocodex"
 BUILD_DIR=".build/release"
 APP_DIR="build/${APP_NAME}.app"
@@ -16,7 +17,7 @@ swift build -c release
 echo "==> assembling ${APP_DIR}"
 rm -rf "${APP_DIR}"
 mkdir -p "${CONTENTS}/MacOS" "${CONTENTS}/Resources"
-cp "${BUILD_DIR}/${APP_NAME}" "${CONTENTS}/MacOS/${APP_NAME}"
+cp "${BUILD_DIR}/${EXECUTABLE_NAME}" "${CONTENTS}/MacOS/${EXECUTABLE_NAME}"
 cp "Resources/AppIcon.icns" "${CONTENTS}/Resources/AppIcon.icns"
 cp "Resources/AppIcon.png" "${CONTENTS}/Resources/AppIcon.png"
 
@@ -25,9 +26,9 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key> <string>${APP_NAME}</string>
+    <key>CFBundleName</key> <string>${DISPLAY_NAME}</string>
     <key>CFBundleDisplayName</key> <string>${DISPLAY_NAME}</string>
-    <key>CFBundleExecutable</key> <string>${APP_NAME}</string>
+    <key>CFBundleExecutable</key> <string>${EXECUTABLE_NAME}</string>
     <key>CFBundleIdentifier</key> <string>${BUNDLE_ID}</string>
     <key>CFBundleIconFile</key> <string>AppIcon</string>
     <key>CFBundleVersion</key> <string>1</string>
@@ -43,6 +44,7 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
             <key>CFBundleURLName</key> <string>${BUNDLE_ID}</string>
             <key>CFBundleURLSchemes</key>
             <array>
+                <string>launchpadpro</string>
                 <string>launchpadprocodex</string>
             </array>
         </dict>

@@ -74,7 +74,7 @@ enum AppBranding {
 
         image.unlockFocus()
         image.isTemplate = true
-        image.accessibilityDescription = "LaunchpadPro Codex"
+        image.accessibilityDescription = "LaunchpadPro"
         return image
     }
 }

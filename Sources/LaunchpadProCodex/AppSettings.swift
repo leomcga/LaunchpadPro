@@ -24,8 +24,15 @@ final class AppSettings: ObservableObject {
         }
     }
     @Published var launchAtLogin: Bool { didSet { set(launchAtLogin, "launchAtLogin") } }
+    @Published var showMenuBarIcon: Bool {
+        didSet {
+            set(showMenuBarIcon, "showMenuBarIcon")
+            onMenuBarIconChanged?()
+        }
+    }
 
     var onHotKeyChanged: (() -> Void)?
+    var onMenuBarIconChanged: (() -> Void)?
 
     private init() {
         columns = Self.readInt(defaults, prefix: prefix, key: "columns", defaultValue: 10)
@@ -39,6 +46,7 @@ final class AppSettings: ObservableObject {
         hotCorner = Self.readInt(defaults, prefix: prefix, key: "hotCorner", defaultValue: 3)
         hotKey = Self.readInt(defaults, prefix: prefix, key: "hotKey", defaultValue: 0)
         launchAtLogin = Self.readBool(defaults, prefix: prefix, key: "launchAtLogin", defaultValue: true)
+        showMenuBarIcon = Self.readBool(defaults, prefix: prefix, key: "showMenuBarIcon", defaultValue: true)
     }
 
     private func key(_ name: String) -> String { prefix + name }
