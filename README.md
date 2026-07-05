@@ -74,6 +74,32 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./dmg.sh
 
 Without `SIGN_IDENTITY`, the app is ad-hoc signed for local testing.
 
+## Maintainer Release
+
+For Developer ID signing with Xcode automatic signing:
+
+```bash
+./xcode-release.sh
+```
+
+This archives a universal macOS app through `LaunchpadPro.xcodeproj`, exports it with Developer ID signing, and creates:
+
+```text
+build/LaunchpadPro.dmg
+```
+
+To submit the archive for Apple notarization through Xcode's logged-in developer account:
+
+```bash
+UPLOAD_FOR_NOTARIZATION=1 ./xcode-release.sh
+```
+
+After Apple finishes processing the archive:
+
+```bash
+USE_NOTARIZED_APP=1 ./xcode-release.sh
+```
+
 ## Local Data
 
 - Layout, folders, custom names, hidden apps, and layout memories:
@@ -93,8 +119,10 @@ Without `SIGN_IDENTITY`, the app is ad-hoc signed for local testing.
 - `PagedLauncherView.swift`: paged grid, drag ordering, folder interactions
 - `SettingsView.swift`: settings window
 - `AppScanner.swift`: app discovery and icon lookup
+- `AppDirectoryWatcher.swift`: automatic refresh when app directories change
 - `bundle.sh`: universal app bundle builder
 - `dmg.sh`: DMG builder
+- `xcode-release.sh`: Xcode automatic signing and Developer ID release builder
 - `deploy.sh`: local install and restart helper
 
 ## License

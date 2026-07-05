@@ -36,6 +36,7 @@ final class OverlayController {
     func show() {
         guard let screen = NSScreen.main else { return }
 
+        model.reload()
         model.searchText = ""
         model.openFolderID = nil
         LauncherBus.shared.reset()

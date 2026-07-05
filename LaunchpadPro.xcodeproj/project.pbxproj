@@ -1,0 +1,457 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0EC25A589BB694B0A8CED0BF /* AppTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E502E006D1E61F0E69EECE2A /* AppTypes.swift */; };
+		1D6FAD06774E4620B61A8383 /* AppDirectoryWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 941E3966E9264BF9862952B9 /* AppDirectoryWatcher.swift */; };
+		2D1D6C7A47040E1EA3B22078 /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 476A614A0CF0A6E63A7C0B90 /* ServiceManagement.framework */; };
+		3782F6E6C471ED53A31AF566 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B6E44CC5CFAC76ED4DEE6D /* SettingsView.swift */; };
+		3F0BAA01912CC10D765BA020 /* LauncherBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713A2267E6BB02AB5EF07883 /* LauncherBus.swift */; };
+		40C664D4155659B7DD2D50DD /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C449F677C9BA4B69C2AC9BF /* QuartzCore.framework */; };
+		494054353DFC06B590736DB9 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C080477119038C1CC5C8619 /* AppSettings.swift */; };
+		7B71944A498188FB3D0FED1E /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ABAB70D81623B7988885E47 /* HotKey.swift */; };
+		86EE3F122E98326FC8CCCCD0 /* Branding.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA53CE31C664DE362ADF259 /* Branding.swift */; };
+		94FAAE3C4CFEFB86C12FC9F4 /* AppScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C741151A6F5EB5B4B12BEE5B /* AppScanner.swift */; };
+		9916BAEDD45111FC3D9EB863 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 389460D6DC199BA5B888E39A /* Carbon.framework */; };
+		A6DFE3C70544D974F76FCC19 /* AppIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 59A93C7ADEB07D84A7899B9D /* AppIcon.png */; };
+		BBE64A4D77D760001B65CABD /* OverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A4DF5F541F64983B1ECE8D0 /* OverlayController.swift */; };
+		BE76275F04A286F6F0C77387 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 018E9F2C0E0AF1CC3F8576E3 /* AppDelegate.swift */; };
+		C6819B6F02EEB6BCA441B84A /* PagedLauncherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C0EFE79A36D1D8E3564218D /* PagedLauncherView.swift */; };
+		CB2AA3E9F296F93A467D6F93 /* LauncherViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28E7B978A8EE04604B861F4 /* LauncherViews.swift */; };
+		DC8AE78671A854872FF91A75 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 391BFECBEB6C5FAC8DE30883 /* main.swift */; };
+		E4532E432044C96EF48986E8 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DD6DAEAA0A1FC8B924BA375A /* Cocoa.framework */; };
+		E6D5D03B1081319A6310AE27 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25D23B5EDE1161CFD69033DF /* SwiftUI.framework */; };
+		EFEA68A69832AF04A063C9F5 /* LaunchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA99F7691DD550637EE9871 /* LaunchModel.swift */; };
+		F1042A216FB928DF825882FA /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = BBFFE4E3C6119D59C185A6BF /* AppIcon.icns */; };
+		F8D13FA1FABEAB7496F0E7C5 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2DC423DCB561CE3D52DD447B /* AppKit.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		018E9F2C0E0AF1CC3F8576E3 /* AppDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		0C449F677C9BA4B69C2AC9BF /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
+		25D23B5EDE1161CFD69033DF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
+		2DC423DCB561CE3D52DD447B /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/AppKit.framework; sourceTree = DEVELOPER_DIR; };
+		389460D6DC199BA5B888E39A /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Carbon.framework; sourceTree = DEVELOPER_DIR; };
+		391BFECBEB6C5FAC8DE30883 /* main.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		3C080477119038C1CC5C8619 /* AppSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		3C0EFE79A36D1D8E3564218D /* PagedLauncherView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PagedLauncherView.swift; sourceTree = "<group>"; };
+		476A614A0CF0A6E63A7C0B90 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/ServiceManagement.framework; sourceTree = DEVELOPER_DIR; };
+		4A4DF5F541F64983B1ECE8D0 /* OverlayController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverlayController.swift; sourceTree = "<group>"; };
+		55B6E44CC5CFAC76ED4DEE6D /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		59A93C7ADEB07D84A7899B9D /* AppIcon.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; path = AppIcon.png; sourceTree = "<group>"; };
+		713A2267E6BB02AB5EF07883 /* LauncherBus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LauncherBus.swift; sourceTree = "<group>"; };
+		8ABAB70D81623B7988885E47 /* HotKey.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HotKey.swift; sourceTree = "<group>"; };
+		941E3966E9264BF9862952B9 /* AppDirectoryWatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDirectoryWatcher.swift; sourceTree = "<group>"; };
+		A01D35F11C60050986DCF04E /* LaunchpadPro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LaunchpadPro.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBFFE4E3C6119D59C185A6BF /* AppIcon.icns */ = {isa = PBXFileReference; includeInIndex = 1; path = AppIcon.icns; sourceTree = "<group>"; };
+		BFA53CE31C664DE362ADF259 /* Branding.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Branding.swift; sourceTree = "<group>"; };
+		C741151A6F5EB5B4B12BEE5B /* AppScanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppScanner.swift; sourceTree = "<group>"; };
+		CA9F67F6322EE617B764A4A6 /* LaunchpadPro-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "LaunchpadPro-Info.plist"; sourceTree = "<group>"; };
+		D28E7B978A8EE04604B861F4 /* LauncherViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LauncherViews.swift; sourceTree = "<group>"; };
+		DD6DAEAA0A1FC8B924BA375A /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		E502E006D1E61F0E69EECE2A /* AppTypes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppTypes.swift; sourceTree = "<group>"; };
+		FAA99F7691DD550637EE9871 /* LaunchModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LaunchModel.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		381A13FBBD09A66439AADF73 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E4532E432044C96EF48986E8 /* Cocoa.framework in Frameworks */,
+				F8D13FA1FABEAB7496F0E7C5 /* AppKit.framework in Frameworks */,
+				9916BAEDD45111FC3D9EB863 /* Carbon.framework in Frameworks */,
+				40C664D4155659B7DD2D50DD /* QuartzCore.framework in Frameworks */,
+				2D1D6C7A47040E1EA3B22078 /* ServiceManagement.framework in Frameworks */,
+				E6D5D03B1081319A6310AE27 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		046DBC5852D1D4B39555CAB9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				33E9FA3C721755CDCCF6CB32 /* OS X */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		33E9FA3C721755CDCCF6CB32 /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				DD6DAEAA0A1FC8B924BA375A /* Cocoa.framework */,
+				2DC423DCB561CE3D52DD447B /* AppKit.framework */,
+				389460D6DC199BA5B888E39A /* Carbon.framework */,
+				0C449F677C9BA4B69C2AC9BF /* QuartzCore.framework */,
+				476A614A0CF0A6E63A7C0B90 /* ServiceManagement.framework */,
+				25D23B5EDE1161CFD69033DF /* SwiftUI.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
+		3600C1C501753BCAF67C135F /* LaunchpadProCodex */ = {
+			isa = PBXGroup;
+			children = (
+				018E9F2C0E0AF1CC3F8576E3 /* AppDelegate.swift */,
+				941E3966E9264BF9862952B9 /* AppDirectoryWatcher.swift */,
+				C741151A6F5EB5B4B12BEE5B /* AppScanner.swift */,
+				3C080477119038C1CC5C8619 /* AppSettings.swift */,
+				E502E006D1E61F0E69EECE2A /* AppTypes.swift */,
+				BFA53CE31C664DE362ADF259 /* Branding.swift */,
+				8ABAB70D81623B7988885E47 /* HotKey.swift */,
+				FAA99F7691DD550637EE9871 /* LaunchModel.swift */,
+				713A2267E6BB02AB5EF07883 /* LauncherBus.swift */,
+				D28E7B978A8EE04604B861F4 /* LauncherViews.swift */,
+				4A4DF5F541F64983B1ECE8D0 /* OverlayController.swift */,
+				3C0EFE79A36D1D8E3564218D /* PagedLauncherView.swift */,
+				55B6E44CC5CFAC76ED4DEE6D /* SettingsView.swift */,
+				391BFECBEB6C5FAC8DE30883 /* main.swift */,
+			);
+			name = LaunchpadProCodex;
+			path = LaunchpadProCodex;
+			sourceTree = "<group>";
+		};
+		51DF60D862A0A98F32F94B7A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A01D35F11C60050986DCF04E /* LaunchpadPro.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		6B035BF225A9AD6CF1FBCF44 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				3600C1C501753BCAF67C135F /* LaunchpadProCodex */,
+			);
+			name = Sources;
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		868F4F594E553D7E93C3AF16 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BBFFE4E3C6119D59C185A6BF /* AppIcon.icns */,
+				59A93C7ADEB07D84A7899B9D /* AppIcon.png */,
+			);
+			name = Resources;
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		895AC9B8F43FDD907E717336 = {
+			isa = PBXGroup;
+			children = (
+				51DF60D862A0A98F32F94B7A /* Products */,
+				046DBC5852D1D4B39555CAB9 /* Frameworks */,
+				6B035BF225A9AD6CF1FBCF44 /* Sources */,
+				868F4F594E553D7E93C3AF16 /* Resources */,
+				FD7E1DF5D45587CD556DB909 /* Support */,
+			);
+			sourceTree = "<group>";
+		};
+		FD7E1DF5D45587CD556DB909 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				CA9F67F6322EE617B764A4A6 /* LaunchpadPro-Info.plist */,
+			);
+			name = Support;
+			path = Support;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3612173983DD5781B5D8C3CC /* LaunchpadPro */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3EA9FB89DB01451246E0E954 /* Build configuration list for PBXNativeTarget "LaunchpadPro" */;
+			buildPhases = (
+				673F6229403C4A7DBFA3BDD9 /* Sources */,
+				381A13FBBD09A66439AADF73 /* Frameworks */,
+				9189ACDEC4E518C0EEE3382E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LaunchpadPro;
+			productName = LaunchpadPro;
+			productReference = A01D35F11C60050986DCF04E /* LaunchpadPro.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D9FDE530423E085172B082E5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 2BE1E02C636C66296534B2D4 /* Build configuration list for PBXProject "LaunchpadPro" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 895AC9B8F43FDD907E717336;
+			minimizedProjectReferenceProxies = 0;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 51DF60D862A0A98F32F94B7A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3612173983DD5781B5D8C3CC /* LaunchpadPro */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9189ACDEC4E518C0EEE3382E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F1042A216FB928DF825882FA /* AppIcon.icns in Resources */,
+				A6DFE3C70544D974F76FCC19 /* AppIcon.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		673F6229403C4A7DBFA3BDD9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BE76275F04A286F6F0C77387 /* AppDelegate.swift in Sources */,
+				1D6FAD06774E4620B61A8383 /* AppDirectoryWatcher.swift in Sources */,
+				94FAAE3C4CFEFB86C12FC9F4 /* AppScanner.swift in Sources */,
+				494054353DFC06B590736DB9 /* AppSettings.swift in Sources */,
+				0EC25A589BB694B0A8CED0BF /* AppTypes.swift in Sources */,
+				86EE3F122E98326FC8CCCCD0 /* Branding.swift in Sources */,
+				7B71944A498188FB3D0FED1E /* HotKey.swift in Sources */,
+				EFEA68A69832AF04A063C9F5 /* LaunchModel.swift in Sources */,
+				3F0BAA01912CC10D765BA020 /* LauncherBus.swift in Sources */,
+				CB2AA3E9F296F93A467D6F93 /* LauncherViews.swift in Sources */,
+				BBE64A4D77D760001B65CABD /* OverlayController.swift in Sources */,
+				C6819B6F02EEB6BCA441B84A /* PagedLauncherView.swift in Sources */,
+				3782F6E6C471ED53A31AF566 /* SettingsView.swift in Sources */,
+				DC8AE78671A854872FF91A75 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0132A79BE64C27AA569B74AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 4C7A85TQ8Z;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		77702FC13C93D77A8758FF2B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4C7A85TQ8Z;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Support/LaunchpadPro-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leo.launchpadprocodex;
+				PRODUCT_NAME = LaunchpadPro;
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		AFE5B0031125F6B169E6B719 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 4C7A85TQ8Z;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F34E917EF842CF5AF9412F2B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4C7A85TQ8Z;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Support/LaunchpadPro-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leo.launchpadprocodex;
+				PRODUCT_NAME = LaunchpadPro;
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2BE1E02C636C66296534B2D4 /* Build configuration list for PBXProject "LaunchpadPro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AFE5B0031125F6B169E6B719 /* Debug */,
+				0132A79BE64C27AA569B74AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3EA9FB89DB01451246E0E954 /* Build configuration list for PBXNativeTarget "LaunchpadPro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				77702FC13C93D77A8758FF2B /* Release */,
+				F34E917EF842CF5AF9412F2B /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D9FDE530423E085172B082E5 /* Project object */;
+}

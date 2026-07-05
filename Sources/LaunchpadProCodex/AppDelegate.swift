@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotCornerTimer: Timer?
     private var lastCornerHit = Date.distantPast
     private var pendingShowOnLaunch = false
+    private var appDirectoryWatcher: AppDirectoryWatcher?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -26,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupHotKey()
         setupHotCorners()
         applyLaunchAtLogin()
+        setupAppDirectoryWatcher()
 
         settings.onHotKeyChanged = { [weak self] in self?.setupHotKey() }
         settings.onMenuBarIconChanged = { [weak self] in self?.applyMenuBarIcon() }
@@ -131,6 +133,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func rescan() {
         model.reload()
+    }
+
+    private func setupAppDirectoryWatcher() {
+        let watcher = AppDirectoryWatcher { [weak self] in
+            self?.model.reload()
+        }
+        watcher.start(watching: AppScanner.watchedDirectories)
+        appDirectoryWatcher = watcher
     }
 
     @objc private func quit() {

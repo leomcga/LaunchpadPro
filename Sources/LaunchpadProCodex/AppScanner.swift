@@ -1,34 +1,66 @@
 import AppKit
 
 enum AppScanner {
-    static let roots: [URL] = {
-        var values = [
-            URL(fileURLWithPath: "/Applications", isDirectory: true),
-            URL(fileURLWithPath: "/System/Applications", isDirectory: true),
-            URL(fileURLWithPath: "/System/Applications/Utilities", isDirectory: true),
-            URL(fileURLWithPath: "/System/Cryptexes/App/System/Applications", isDirectory: true),
-            URL(fileURLWithPath: "/Applications/Utilities", isDirectory: true)
+    private struct ScanRoot {
+        let url: URL
+        let maxDepth: Int
+    }
+
+    private static let roots: [ScanRoot] = {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return [
+            ScanRoot(url: URL(fileURLWithPath: "/Applications", isDirectory: true), maxDepth: 2),
+            ScanRoot(url: URL(fileURLWithPath: "/System/Applications", isDirectory: true), maxDepth: 2),
+            ScanRoot(url: URL(fileURLWithPath: "/System/Cryptexes/App/System/Applications", isDirectory: true), maxDepth: 2),
+            ScanRoot(url: URL(fileURLWithPath: "/System/Volumes/Preboot/Cryptexes/App/System/Applications", isDirectory: true), maxDepth: 2),
+            ScanRoot(url: home.appendingPathComponent("Applications", isDirectory: true), maxDepth: 2),
+            ScanRoot(url: home.appendingPathComponent("Downloads", isDirectory: true), maxDepth: 2),
+            ScanRoot(url: home.appendingPathComponent("Desktop", isDirectory: true), maxDepth: 2)
         ]
-        values.append(FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true))
-        return values
     }()
+
+    static var watchedDirectories: [URL] {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return [
+            URL(fileURLWithPath: "/Applications", isDirectory: true),
+            home.appendingPathComponent("Applications", isDirectory: true),
+            home.appendingPathComponent("Downloads", isDirectory: true),
+            home.appendingPathComponent("Desktop", isDirectory: true)
+        ]
+    }
 
     static func scan() -> [AppRecord] {
         var records: [AppRecord] = []
         var seenPaths = Set<String>()
 
         for root in roots {
-            guard let children = try? FileManager.default.contentsOfDirectory(
-                at: root,
+            guard let children = FileManager.default.enumerator(
+                at: root.url,
                 includingPropertiesForKeys: [.creationDateKey, .isDirectoryKey, .isPackageKey],
                 options: [.skipsHiddenFiles]
             ) else { continue }
 
-            for url in children where url.pathExtension == "app" {
+            for case let url as URL in children {
+                let depth = depth(of: url, relativeTo: root.url)
+                if depth > root.maxDepth {
+                    children.skipDescendants()
+                    continue
+                }
+
+                let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])
+                let isPackage = values?.isPackage ?? false
+                let isDirectory = values?.isDirectory ?? false
+
+                guard url.pathExtension == "app", isDirectory else {
+                    if isPackage { children.skipDescendants() }
+                    continue
+                }
+
                 let path = url.path
                 guard !seenPaths.contains(path), let record = makeRecord(url) else { continue }
                 seenPaths.insert(path)
                 records.append(record)
+                children.skipDescendants()
             }
         }
 
@@ -60,6 +92,12 @@ enum AppScanner {
             bundleIdentifier: bundle?.bundleIdentifier,
             dateAdded: values?.creationDate?.timeIntervalSince1970 ?? 0
         )
+    }
+
+    private static func depth(of url: URL, relativeTo root: URL) -> Int {
+        let rootComponents = root.standardizedFileURL.resolvingSymlinksInPath().pathComponents
+        let components = url.standardizedFileURL.resolvingSymlinksInPath().pathComponents
+        return max(0, components.count - rootComponents.count)
     }
 
     private static func localizedName(bundle: Bundle?, url: URL, fallback: String) -> String {
