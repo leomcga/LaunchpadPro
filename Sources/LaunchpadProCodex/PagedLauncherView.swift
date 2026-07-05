@@ -16,6 +16,21 @@ private struct EntryFramePreference: PreferenceKey {
     }
 }
 
+private struct FolderPanelMetrics {
+    let cell: CGSize
+    let columns: Int
+    let rows: Int
+    let horizontalSpacing: CGFloat
+    let verticalSpacing: CGFloat
+    let panelWidth: CGFloat
+    let naturalPanelHeight: CGFloat
+    let visiblePanelHeight: CGFloat
+
+    var needsScroll: Bool {
+        naturalPanelHeight > visiblePanelHeight + 0.5
+    }
+}
+
 struct PagedLauncherView: View {
     @ObservedObject var model: LaunchModel
     @ObservedObject var settings = AppSettings.shared
@@ -755,25 +770,15 @@ struct PagedLauncherView: View {
 
     @ViewBuilder private func folderLayer(_ folder: FolderRecord) -> some View {
         let apps = model.apps(in: folder)
-        let icon = min(settings.iconSize, 86)
-        let cell = CGSize(width: icon + 26, height: icon + 38)
-        let folderColumns = min(10, max(1, apps.count))
-        let rowCount = max(1, Int(ceil(Double(apps.count) / Double(folderColumns))))
-        let horizontalSpacing: CGFloat = 18
-        let verticalSpacing: CGFloat = 18
-        let panelWidth = min(
-            size.width - 112,
-            max(560, CGFloat(folderColumns) * cell.width + CGFloat(folderColumns - 1) * horizontalSpacing + 54)
-        )
-        let panelHeight = CGFloat(rowCount) * cell.height + CGFloat(rowCount - 1) * verticalSpacing + 42
+        let metrics = folderPanelMetrics(appCount: apps.count)
         let progress = effectiveFolderReveal
         let sourceFrame = folderSourceFrame ?? sourceFrame(forFolderID: folder.id)
         let targetCenter = CGPoint(x: size.width / 2, y: size.height / 2)
         let sourceCenter = CGPoint(x: sourceFrame.midX, y: sourceFrame.midY)
-        let contentHeight = panelHeight + 42
+        let contentHeight = metrics.visiblePanelHeight + 42
         let initialScale = min(
             0.22,
-            max(0.075, min(sourceFrame.width / max(panelWidth, 1), sourceFrame.height / max(contentHeight, 1)))
+            max(0.075, min(sourceFrame.width / max(metrics.panelWidth, 1), sourceFrame.height / max(contentHeight, 1)))
         )
         let zoomScale = initialScale + (1 - initialScale) * progress
         let zoomOffset = CGSize(
@@ -793,17 +798,11 @@ struct PagedLauncherView: View {
                 folderTitle(folder)
 
                 GlassEffectContainer(spacing: 0) {
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.fixed(cell.width), spacing: horizontalSpacing), count: folderColumns),
-                        spacing: verticalSpacing
-                    ) {
-                        ForEach(apps, id: \.id) { app in
-                            folderAppCell(app: app, folder: folder, cell: cell)
-                        }
+                    ScrollView(.vertical, showsIndicators: metrics.needsScroll) {
+                        folderGrid(apps: apps, folder: folder, metrics: metrics)
                     }
-                    .padding(.horizontal, 27)
-                    .padding(.vertical, 21)
-                    .frame(width: panelWidth, height: panelHeight)
+                    .frame(width: metrics.panelWidth, height: metrics.visiblePanelHeight)
+                    .clipped()
                     .glassEffect(.regular.tint(Color.black.opacity(0.18)).interactive(false), in: .rect(cornerRadius: 28))
                     .overlay(
                         RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -845,7 +844,7 @@ struct PagedLauncherView: View {
 
             if let folderDragID {
                 AppIconView(model: model, appID: folderDragID, onLaunch: { _ in })
-                    .frame(width: cell.width, height: cell.height)
+                    .frame(width: metrics.cell.width, height: metrics.cell.height)
                     .scaleEffect(1.16)
                     .shadow(color: .black.opacity(0.46), radius: 16, y: 8)
                     .position(folderDragPoint)
@@ -855,26 +854,59 @@ struct PagedLauncherView: View {
         .onPreferenceChange(CellFramePreference.self) { folderFrames = $0 }
     }
 
-    private func currentExpandedFolderPanelRect() -> CGRect? {
-        guard let folderID = presentedFolderID,
-              let folder = currentFolder(folderID) else { return nil }
-        let apps = model.apps(in: folder)
+    private func folderPanelMetrics(appCount: Int) -> FolderPanelMetrics {
         let icon = min(settings.iconSize, 86)
         let cell = CGSize(width: icon + 26, height: icon + 38)
-        let columns = min(10, max(1, apps.count))
-        let rows = max(1, Int(ceil(Double(apps.count) / Double(columns))))
+        let columns = min(10, max(1, appCount))
+        let rows = max(1, Int(ceil(Double(appCount) / Double(columns))))
         let horizontalSpacing: CGFloat = 18
         let verticalSpacing: CGFloat = 18
         let panelWidth = min(
             size.width - 112,
             max(560, CGFloat(columns) * cell.width + CGFloat(columns - 1) * horizontalSpacing + 54)
         )
-        let panelHeight = CGFloat(rows) * cell.height + CGFloat(rows - 1) * verticalSpacing + 42
+        let naturalPanelHeight = CGFloat(rows) * cell.height + CGFloat(rows - 1) * verticalSpacing + 42
+        let maxPanelHeight = max(240, size.height - 220)
+        let visiblePanelHeight = min(naturalPanelHeight, maxPanelHeight)
+
+        return FolderPanelMetrics(
+            cell: cell,
+            columns: columns,
+            rows: rows,
+            horizontalSpacing: horizontalSpacing,
+            verticalSpacing: verticalSpacing,
+            panelWidth: panelWidth,
+            naturalPanelHeight: naturalPanelHeight,
+            visiblePanelHeight: visiblePanelHeight
+        )
+    }
+
+    private func folderGrid(apps: [AppRecord], folder: FolderRecord, metrics: FolderPanelMetrics) -> some View {
+        LazyVGrid(
+            columns: Array(
+                repeating: GridItem(.fixed(metrics.cell.width), spacing: metrics.horizontalSpacing),
+                count: metrics.columns
+            ),
+            spacing: metrics.verticalSpacing
+        ) {
+            ForEach(apps, id: \.id) { app in
+                folderAppCell(app: app, folder: folder, cell: metrics.cell)
+            }
+        }
+        .padding(.horizontal, 27)
+        .padding(.vertical, 21)
+        .frame(width: metrics.panelWidth)
+    }
+
+    private func currentExpandedFolderPanelRect() -> CGRect? {
+        guard let folderID = presentedFolderID,
+              let folder = currentFolder(folderID) else { return nil }
+        let metrics = folderPanelMetrics(appCount: model.apps(in: folder).count)
         return CGRect(
-            x: (size.width - panelWidth) / 2,
-            y: (size.height - panelHeight) / 2,
-            width: panelWidth,
-            height: panelHeight
+            x: (size.width - metrics.panelWidth) / 2,
+            y: (size.height - metrics.visiblePanelHeight) / 2,
+            width: metrics.panelWidth,
+            height: metrics.visiblePanelHeight
         )
     }
 

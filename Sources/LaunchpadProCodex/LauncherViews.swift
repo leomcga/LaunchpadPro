@@ -813,18 +813,7 @@ struct SimpleFolderOverlay: View {
 
     var body: some View {
         let apps = model.apps(in: folder)
-        let icon = min(settings.iconSize, 86)
-        let cell = CGSize(width: icon + 26, height: icon + 38)
-        let columns = min(10, max(1, apps.count))
-        let rowCount = max(1, Int(ceil(Double(apps.count) / Double(columns))))
-        let horizontalSpacing: CGFloat = 18
-        let verticalSpacing: CGFloat = 18
-        let availableWidth = (NSScreen.main?.frame.width ?? 1100) - 112
-        let panelWidth = min(
-            availableWidth,
-            max(560, CGFloat(columns) * cell.width + CGFloat(columns - 1) * horizontalSpacing + 54)
-        )
-        let panelHeight = CGFloat(rowCount) * cell.height + CGFloat(rowCount - 1) * verticalSpacing + 42
+        let metrics = panelMetrics(appCount: apps.count)
 
         ZStack {
             Color.black.opacity(0.62)
@@ -836,35 +825,11 @@ struct SimpleFolderOverlay: View {
                 titleView
 
                 GlassEffectContainer(spacing: 0) {
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.fixed(cell.width), spacing: horizontalSpacing), count: columns),
-                        spacing: verticalSpacing
-                    ) {
-                        ForEach(apps, id: \.id) { app in
-                            AppIconView(model: model, appID: app.id, onLaunch: onLaunch)
-                                .frame(width: cell.width, height: cell.height)
-                                .opacity(draggingID == app.id ? 0.28 : 1)
-                                .background(
-                                    GeometryReader { proxy in
-                                        Color.clear.preference(
-                                            key: CellFramePreference.self,
-                                            value: ["app:" + app.id: proxy.frame(in: .named(coordinateSpace))]
-                                        )
-                                    }
-                                )
-                                .gesture(folderDrag(appID: app.id))
-                                .contextMenu {
-                                    Button("打开") { onLaunch(app.id) }
-                                    Button("移出文件夹") {
-                                        model.removeFromFolder(appID: app.id, folderID: folder.id)
-                                        if model.apps(in: folder).count <= 1 { onClose() }
-                                    }
-                                }
-                        }
+                    ScrollView(.vertical, showsIndicators: metrics.needsScroll) {
+                        folderGrid(apps: apps, metrics: metrics)
                     }
-                    .padding(.horizontal, 27)
-                    .padding(.vertical, 21)
-                    .frame(width: panelWidth, height: panelHeight)
+                    .frame(width: metrics.panelWidth, height: metrics.visiblePanelHeight)
+                    .clipped()
                     .glassEffect(.regular.tint(Color.black.opacity(0.18)).interactive(false), in: .rect(cornerRadius: 28))
                     .overlay(
                         RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -901,7 +866,7 @@ struct SimpleFolderOverlay: View {
 
             if let draggingID {
                 AppIconView(model: model, appID: draggingID, onLaunch: { _ in })
-                    .frame(width: cell.width, height: cell.height)
+                    .frame(width: metrics.cell.width, height: metrics.cell.height)
                     .scaleEffect(1.15)
                     .shadow(color: .black.opacity(0.46), radius: 16, y: 8)
                     .position(dragPoint)
@@ -910,6 +875,82 @@ struct SimpleFolderOverlay: View {
         }
         .coordinateSpace(name: coordinateSpace)
         .onPreferenceChange(CellFramePreference.self) { frames = $0 }
+    }
+
+    private struct PanelMetrics {
+        let cell: CGSize
+        let columns: Int
+        let horizontalSpacing: CGFloat
+        let verticalSpacing: CGFloat
+        let panelWidth: CGFloat
+        let naturalPanelHeight: CGFloat
+        let visiblePanelHeight: CGFloat
+
+        var needsScroll: Bool {
+            naturalPanelHeight > visiblePanelHeight + 0.5
+        }
+    }
+
+    private func panelMetrics(appCount: Int) -> PanelMetrics {
+        let icon = min(settings.iconSize, 86)
+        let cell = CGSize(width: icon + 26, height: icon + 38)
+        let columns = min(10, max(1, appCount))
+        let rows = max(1, Int(ceil(Double(appCount) / Double(columns))))
+        let horizontalSpacing: CGFloat = 18
+        let verticalSpacing: CGFloat = 18
+        let screen = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1100, height: 800)
+        let panelWidth = min(
+            screen.width - 112,
+            max(560, CGFloat(columns) * cell.width + CGFloat(columns - 1) * horizontalSpacing + 54)
+        )
+        let naturalPanelHeight = CGFloat(rows) * cell.height + CGFloat(rows - 1) * verticalSpacing + 42
+        let maxPanelHeight = max(240, screen.height - 220)
+        let visiblePanelHeight = min(naturalPanelHeight, maxPanelHeight)
+
+        return PanelMetrics(
+            cell: cell,
+            columns: columns,
+            horizontalSpacing: horizontalSpacing,
+            verticalSpacing: verticalSpacing,
+            panelWidth: panelWidth,
+            naturalPanelHeight: naturalPanelHeight,
+            visiblePanelHeight: visiblePanelHeight
+        )
+    }
+
+    private func folderGrid(apps: [AppRecord], metrics: PanelMetrics) -> some View {
+        LazyVGrid(
+            columns: Array(
+                repeating: GridItem(.fixed(metrics.cell.width), spacing: metrics.horizontalSpacing),
+                count: metrics.columns
+            ),
+            spacing: metrics.verticalSpacing
+        ) {
+            ForEach(apps, id: \.id) { app in
+                AppIconView(model: model, appID: app.id, onLaunch: onLaunch)
+                    .frame(width: metrics.cell.width, height: metrics.cell.height)
+                    .opacity(draggingID == app.id ? 0.28 : 1)
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: CellFramePreference.self,
+                                value: ["app:" + app.id: proxy.frame(in: .named(coordinateSpace))]
+                            )
+                        }
+                    )
+                    .gesture(folderDrag(appID: app.id))
+                    .contextMenu {
+                        Button("打开") { onLaunch(app.id) }
+                        Button("移出文件夹") {
+                            model.removeFromFolder(appID: app.id, folderID: folder.id)
+                            if model.apps(in: folder).count <= 1 { onClose() }
+                        }
+                    }
+            }
+        }
+        .padding(.horizontal, 27)
+        .padding(.vertical, 21)
+        .frame(width: metrics.panelWidth)
     }
 
     @ViewBuilder private var titleView: some View {
