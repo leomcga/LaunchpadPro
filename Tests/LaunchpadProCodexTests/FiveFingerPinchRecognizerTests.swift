@@ -6,14 +6,14 @@ final class FiveFingerPinchRecognizerTests: XCTestCase {
         var recognizer = FiveFingerPinchRecognizer()
 
         XCTAssertFalse(recognizer.process(points: points(scale: 1.0), timestamp: 0.0))
-        XCTAssertFalse(recognizer.process(points: points(scale: 0.66), timestamp: 0.1))
-        XCTAssertTrue(recognizer.process(points: points(scale: 0.64), timestamp: 0.2))
+        XCTAssertFalse(recognizer.process(points: points(scale: 0.82), timestamp: 0.1))
+        XCTAssertTrue(recognizer.process(points: points(scale: 0.80), timestamp: 0.2))
         XCTAssertFalse(recognizer.process(points: points(scale: 0.50), timestamp: 0.3))
 
         XCTAssertFalse(recognizer.process(points: [], timestamp: 0.4))
         XCTAssertFalse(recognizer.process(points: points(scale: 1.0), timestamp: 0.5))
-        XCTAssertFalse(recognizer.process(points: points(scale: 0.66), timestamp: 0.6))
-        XCTAssertTrue(recognizer.process(points: points(scale: 0.64), timestamp: 0.7))
+        XCTAssertFalse(recognizer.process(points: points(scale: 0.82), timestamp: 0.6))
+        XCTAssertTrue(recognizer.process(points: points(scale: 0.80), timestamp: 0.7))
     }
 
     func testFiveFingerSwipeDoesNotTrigger() {
@@ -40,16 +40,24 @@ final class FiveFingerPinchRecognizerTests: XCTestCase {
         )
     }
 
+    func testTinyFiveFingerMovementDoesNotTrigger() {
+        var recognizer = FiveFingerPinchRecognizer()
+
+        XCTAssertFalse(recognizer.process(points: points(scale: 1.0), timestamp: 0.0))
+        XCTAssertFalse(recognizer.process(points: points(scale: 0.94), timestamp: 0.1))
+        XCTAssertFalse(recognizer.process(points: points(scale: 0.92), timestamp: 0.2))
+    }
+
     func testFrameGapStartsANewGestureWithoutReleaseFrame() {
         var recognizer = FiveFingerPinchRecognizer()
 
         XCTAssertFalse(recognizer.process(points: points(scale: 1.0), timestamp: 0.0))
-        XCTAssertFalse(recognizer.process(points: points(scale: 0.66), timestamp: 0.1))
-        XCTAssertTrue(recognizer.process(points: points(scale: 0.64), timestamp: 0.2))
+        XCTAssertFalse(recognizer.process(points: points(scale: 0.82), timestamp: 0.1))
+        XCTAssertTrue(recognizer.process(points: points(scale: 0.80), timestamp: 0.2))
 
         XCTAssertFalse(recognizer.process(points: points(scale: 1.0), timestamp: 0.7))
-        XCTAssertFalse(recognizer.process(points: points(scale: 0.66), timestamp: 0.8))
-        XCTAssertTrue(recognizer.process(points: points(scale: 0.64), timestamp: 0.9))
+        XCTAssertFalse(recognizer.process(points: points(scale: 0.82), timestamp: 0.8))
+        XCTAssertTrue(recognizer.process(points: points(scale: 0.80), timestamp: 0.9))
     }
 
     private func points(scale: Float) -> [MTPoint] {

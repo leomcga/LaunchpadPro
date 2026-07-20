@@ -139,7 +139,9 @@ reliably support suppressing Spotlight Apps through that return value. Launchpad
 instead preserves and temporarily disables the system four/five-finger pinch
 preferences while it owns the gesture, restoring them when the feature is turned
 off. A frame-time gap also resets the one-shot recognizer, so devices that omit a
-zero-contact release frame can still begin the next gesture.
+zero-contact release frame can still begin the next gesture. The launcher triggers
+after roughly 16% touch-cloud contraction over two consecutive frames, so a short,
+natural five-finger pinch is sufficient without bringing every finger to the center.
 
 This implementation is intended for direct distribution and local use, not the Mac
 App Store. A future macOS update may require updating the private-framework bridge.
