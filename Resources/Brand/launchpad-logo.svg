@@ -1,15 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="LaunchpadPro logo">
   <defs>
-    <linearGradient id="body" x1="158" y1="82" x2="856" y2="926" gradientUnits="userSpaceOnUse">
+    <linearGradient id="body" x1="112" y1="54" x2="902" y2="970" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFFFFF"/>
       <stop offset="0.54" stop-color="#F8F8F7"/>
       <stop offset="1" stop-color="#E6E6E3"/>
-    </linearGradient>
-
-    <linearGradient id="bodyEdge" x1="158" y1="82" x2="866" y2="938" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/>
-      <stop offset="0.66" stop-color="#D9D9D6" stop-opacity="0.48"/>
-      <stop offset="1" stop-color="#BFC0BD" stop-opacity="0.38"/>
     </linearGradient>
 
     <linearGradient id="search" x1="254" y1="214" x2="772" y2="326" gradientUnits="userSpaceOnUse">
@@ -53,9 +47,9 @@
       <stop offset="1" stop-color="#AEB0AD"/>
     </linearGradient>
 
-    <filter id="bodyShadow" x="-12%" y="-11%" width="124%" height="130%">
-      <feDropShadow dx="0" dy="30" stdDeviation="28" flood-color="#000000" flood-opacity="0.25"/>
-      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000000" flood-opacity="0.1"/>
+    <filter id="bodyShadow" x="-10%" y="-9%" width="120%" height="124%">
+      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#000000" flood-opacity="0.20"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.08"/>
     </filter>
 
     <filter id="softInset" x="-10%" y="-10%" width="120%" height="130%">
@@ -75,11 +69,10 @@
   <rect width="1024" height="1024" fill="none"/>
 
   <g filter="url(#bodyShadow)">
-    <rect x="104" y="78" width="816" height="864" rx="190" fill="url(#body)"/>
-    <rect x="110" y="84" width="804" height="852" rx="184" fill="none" stroke="url(#bodyEdge)" stroke-width="12"/>
+    <rect x="58" y="48" width="908" height="920" rx="224" fill="url(#body)"/>
   </g>
 
-  <path d="M200 152C270 108 372 96 512 96C656 96 758 110 826 156" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity="0.66"/>
+  <path d="M166 138C254 88 366 72 512 72C664 72 776 90 858 142" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity="0.54"/>
 
   <g filter="url(#softInset)">
     <rect x="256" y="222" width="512" height="96" rx="48" fill="url(#search)"/>

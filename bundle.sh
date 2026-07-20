@@ -7,6 +7,8 @@ APP_NAME="LaunchpadPro"
 EXECUTABLE_NAME="LaunchpadProCodex"
 DISPLAY_NAME="LaunchpadPro"
 BUNDLE_ID="com.leo.launchpadprocodex"
+MARKETING_VERSION="1.2.0"
+BUILD_NUMBER="2"
 BUILD_DIR=".build/apple/Products/Release"
 APP_DIR="build/${APP_NAME}.app"
 CONTENTS="${APP_DIR}/Contents"
@@ -32,8 +34,8 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>CFBundleExecutable</key> <string>${EXECUTABLE_NAME}</string>
     <key>CFBundleIdentifier</key> <string>${BUNDLE_ID}</string>
     <key>CFBundleIconFile</key> <string>AppIcon</string>
-    <key>CFBundleVersion</key> <string>1</string>
-    <key>CFBundleShortVersionString</key> <string>1.0</string>
+    <key>CFBundleVersion</key> <string>${BUILD_NUMBER}</string>
+    <key>CFBundleShortVersionString</key> <string>${MARKETING_VERSION}</string>
     <key>CFBundlePackageType</key> <string>APPL</string>
     <key>LSMinimumSystemVersion</key> <string>26.0</string>
     <key>LSUIElement</key> <true/>

@@ -383,6 +383,11 @@ private struct LayoutMemoryRow: View {
 }
 
 private struct AboutSettingsTab: View {
+    private var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            ?? "1.2.0"
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             if let icon = AppBranding.icon(size: NSSize(width: 72, height: 72)) {
@@ -400,7 +405,7 @@ private struct AboutSettingsTab: View {
                 .font(.title2)
                 .bold()
 
-            Text("版本 1.0")
+            Text("版本 \(version)")
                 .foregroundStyle(.secondary)
 
             Text("原生 macOS 启动台替代品。纯本地运行，无账号、无联网、无授权校验。")
