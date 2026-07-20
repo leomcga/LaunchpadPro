@@ -20,5 +20,5 @@ macOS 26 and completes the multi-display experience.
 
 Download `LaunchpadPro.dmg`, open it, and drag `LaunchpadPro.app` into `Applications`.
 
-This release is ad-hoc signed. On first launch, Control-click LaunchpadPro and
-choose **Open** if macOS blocks a normal double-click.
+This release is signed with a Developer ID certificate and notarized by Apple,
+so it can be opened normally after installation.
