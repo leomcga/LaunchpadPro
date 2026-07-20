@@ -14,6 +14,7 @@
 		3F0BAA01912CC10D765BA020 /* LauncherBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713A2267E6BB02AB5EF07883 /* LauncherBus.swift */; };
 		40C664D4155659B7DD2D50DD /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C449F677C9BA4B69C2AC9BF /* QuartzCore.framework */; };
 		494054353DFC06B590736DB9 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C080477119038C1CC5C8619 /* AppSettings.swift */; };
+		5F1A0B8C2D3E4F5061728394 /* FiveFingerPinchMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A2B1C9D3E4F506172839405 /* FiveFingerPinchMonitor.swift */; };
 		7B71944A498188FB3D0FED1E /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ABAB70D81623B7988885E47 /* HotKey.swift */; };
 		86EE3F122E98326FC8CCCCD0 /* Branding.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA53CE31C664DE362ADF259 /* Branding.swift */; };
 		94FAAE3C4CFEFB86C12FC9F4 /* AppScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C741151A6F5EB5B4B12BEE5B /* AppScanner.swift */; };
@@ -44,6 +45,7 @@
 		4A4DF5F541F64983B1ECE8D0 /* OverlayController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverlayController.swift; sourceTree = "<group>"; };
 		55B6E44CC5CFAC76ED4DEE6D /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		59A93C7ADEB07D84A7899B9D /* AppIcon.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; path = AppIcon.png; sourceTree = "<group>"; };
+		6A2B1C9D3E4F506172839405 /* FiveFingerPinchMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FiveFingerPinchMonitor.swift; sourceTree = "<group>"; };
 		713A2267E6BB02AB5EF07883 /* LauncherBus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LauncherBus.swift; sourceTree = "<group>"; };
 		8ABAB70D81623B7988885E47 /* HotKey.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HotKey.swift; sourceTree = "<group>"; };
 		941E3966E9264BF9862952B9 /* AppDirectoryWatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppDirectoryWatcher.swift; sourceTree = "<group>"; };
@@ -105,6 +107,7 @@
 				3C080477119038C1CC5C8619 /* AppSettings.swift */,
 				E502E006D1E61F0E69EECE2A /* AppTypes.swift */,
 				BFA53CE31C664DE362ADF259 /* Branding.swift */,
+				6A2B1C9D3E4F506172839405 /* FiveFingerPinchMonitor.swift */,
 				8ABAB70D81623B7988885E47 /* HotKey.swift */,
 				FAA99F7691DD550637EE9871 /* LaunchModel.swift */,
 				713A2267E6BB02AB5EF07883 /* LauncherBus.swift */,
@@ -237,6 +240,7 @@
 				494054353DFC06B590736DB9 /* AppSettings.swift in Sources */,
 				0EC25A589BB694B0A8CED0BF /* AppTypes.swift in Sources */,
 				86EE3F122E98326FC8CCCCD0 /* Branding.swift in Sources */,
+				5F1A0B8C2D3E4F5061728394 /* FiveFingerPinchMonitor.swift in Sources */,
 				7B71944A498188FB3D0FED1E /* HotKey.swift in Sources */,
 				EFEA68A69832AF04A063C9F5 /* LaunchModel.swift in Sources */,
 				3F0BAA01912CC10D765BA020 /* LauncherBus.swift in Sources */,
@@ -324,10 +328,19 @@
 				DEVELOPMENT_TEAM = 4C7A85TQ8Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					/System/Library/PrivateFrameworks,
+				);
 				INFOPLIST_FILE = "Support/LaunchpadPro-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					MultitouchSupport,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.leo.launchpadprocodex;
 				PRODUCT_NAME = LaunchpadPro;
 				SDKROOT = macosx;
@@ -417,10 +430,19 @@
 				DEVELOPMENT_TEAM = 4C7A85TQ8Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					/System/Library/PrivateFrameworks,
+				);
 				INFOPLIST_FILE = "Support/LaunchpadPro-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					MultitouchSupport,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.leo.launchpadprocodex;
 				PRODUCT_NAME = LaunchpadPro;
 				SDKROOT = macosx;

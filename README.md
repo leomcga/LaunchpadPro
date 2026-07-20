@@ -9,6 +9,7 @@ LaunchpadPro is a native macOS app launcher built with SwiftUI and AppKit. It gi
 - Drag-and-drop app ordering
 - Folder creation, renaming, scrolling, and drag-out behavior
 - Trackpad-friendly page swiping with damped motion
+- Native five-finger pinch-to-open gesture
 - Menu bar launcher with optional visibility
 - Global hotkey and hot corner support
 - Up to 3 saved layout memories
@@ -26,7 +27,7 @@ Download `LaunchpadPro.dmg` from the GitHub Releases page, open it, then drag `L
 
 ## Usage
 
-- Open launcher: `Option + Space`, menu bar icon, hot corner, or `launchpadpro://show`
+- Open launcher: five-finger pinch, `Option + Space`, menu bar icon, hot corner, or `launchpadpro://show`
 - Search: type immediately after opening
 - Open app: click an app icon
 - Reorder: drag an app to a new position
@@ -114,6 +115,7 @@ USE_NOTARIZED_APP=1 ./xcode-release.sh
 
 - `AppDelegate.swift`: app lifecycle, menu bar, hotkey, hot corners, login item, URL scheme
 - `OverlayController.swift`: full-screen overlay window and trackpad paging input
+- `FiveFingerPinchMonitor.swift`: global five-finger pinch recognition
 - `LaunchModel.swift`: app list, folders, layout persistence, layout memories
 - `LauncherViews.swift`: root launcher UI, search bar, app icons, vertical mode folder overlay
 - `PagedLauncherView.swift`: paged grid, drag ordering, folder interactions
@@ -124,6 +126,21 @@ USE_NOTARIZED_APP=1 ./xcode-release.sh
 - `dmg.sh`: DMG builder
 - `xcode-release.sh`: Xcode automatic signing and Developer ID release builder
 - `deploy.sh`: local install and restart helper
+
+## Five-Finger Gesture
+
+macOS does not provide a public API for observing a specific finger count globally.
+LaunchpadPro therefore keeps all access to Apple's private `MultitouchSupport`
+framework inside `FiveFingerPinchMonitor.swift`. The recognizer only opens the
+launcher after a five-touch cloud contracts substantially without moving its
+centroid, which avoids treating five-finger swipes as pinches. It does not consume
+touch frames, so macOS system gestures continue to receive them.
+
+This implementation is intended for direct distribution and local use, not the Mac
+App Store. A future macOS update may require updating the private-framework bridge.
+The architecture was informed by the actively maintained, MIT-licensed
+[MiddleDrag](https://github.com/NullPointerDepressiveDisorder/MiddleDrag) project
+and [OpenMultitouchSupport](https://github.com/Kyome22/OpenMultitouchSupport).
 
 ## License
 

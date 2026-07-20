@@ -17,6 +17,12 @@ final class AppSettings: ObservableObject {
     @Published var backgroundDim: Double { didSet { set(backgroundDim, "backgroundDim") } }
     @Published var hotCornersEnabled: Bool { didSet { set(hotCornersEnabled, "hotCornersEnabled") } }
     @Published var hotCorner: Int { didSet { set(hotCorner, "hotCorner") } }
+    @Published var fiveFingerPinchEnabled: Bool {
+        didSet {
+            set(fiveFingerPinchEnabled, "fiveFingerPinchEnabled")
+            onFiveFingerPinchChanged?()
+        }
+    }
     @Published var hotKey: Int {
         didSet {
             set(hotKey, "hotKey")
@@ -32,6 +38,7 @@ final class AppSettings: ObservableObject {
     }
 
     var onHotKeyChanged: (() -> Void)?
+    var onFiveFingerPinchChanged: (() -> Void)?
     var onMenuBarIconChanged: (() -> Void)?
 
     private init() {
@@ -44,6 +51,7 @@ final class AppSettings: ObservableObject {
         backgroundDim = Self.readDouble(defaults, prefix: prefix, key: "backgroundDim", defaultValue: 0.30)
         hotCornersEnabled = Self.readBool(defaults, prefix: prefix, key: "hotCornersEnabled", defaultValue: false)
         hotCorner = Self.readInt(defaults, prefix: prefix, key: "hotCorner", defaultValue: 3)
+        fiveFingerPinchEnabled = Self.readBool(defaults, prefix: prefix, key: "fiveFingerPinchEnabled", defaultValue: true)
         hotKey = Self.readInt(defaults, prefix: prefix, key: "hotKey", defaultValue: 0)
         launchAtLogin = Self.readBool(defaults, prefix: prefix, key: "launchAtLogin", defaultValue: true)
         showMenuBarIcon = Self.readBool(defaults, prefix: prefix, key: "showMenuBarIcon", defaultValue: true)

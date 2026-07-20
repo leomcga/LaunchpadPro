@@ -12,12 +12,18 @@ let package = Package(
                 .swiftLanguageMode(.v5)
             ],
             linkerSettings: [
+                .unsafeFlags(["-F/System/Library/PrivateFrameworks"]),
                 .linkedFramework("AppKit"),
                 .linkedFramework("Carbon"),
+                .linkedFramework("MultitouchSupport"),
                 .linkedFramework("QuartzCore"),
                 .linkedFramework("ServiceManagement"),
                 .linkedFramework("SwiftUI")
             ]
+        ),
+        .testTarget(
+            name: "LaunchpadProCodexTests",
+            dependencies: ["LaunchpadProCodex"]
         )
     ]
 )

@@ -25,11 +25,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         applyMenuBarIcon()
         setupHotKey()
+        setupFiveFingerPinch()
         setupHotCorners()
         applyLaunchAtLogin()
         setupAppDirectoryWatcher()
 
         settings.onHotKeyChanged = { [weak self] in self?.setupHotKey() }
+        settings.onFiveFingerPinchChanged = { [weak self] in self?.setupFiveFingerPinch() }
         settings.onMenuBarIconChanged = { [weak self] in self?.applyMenuBarIcon() }
 
         if pendingShowOnLaunch {
@@ -164,6 +166,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return (UInt32(kVK_Space), UInt32(cmdKey | optionKey))
         case .f4:
             return (UInt32(kVK_F4), 0)
+        }
+    }
+
+    private func setupFiveFingerPinch() {
+        FiveFingerPinchMonitor.shared.configure(enabled: settings.fiveFingerPinchEnabled) { [weak self] in
+            guard let self, !self.overlay.isVisible else { return }
+            self.overlay.show()
         }
     }
 

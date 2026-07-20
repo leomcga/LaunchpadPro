@@ -157,6 +157,18 @@ private struct GeneralSettingsTab: View {
                 }
             }
 
+            Section("触控板") {
+                Toggle("五指捏合时唤起", isOn: $settings.fiveFingerPinchEnabled)
+
+                Text(
+                    FiveFingerPinchMonitor.shared.isAvailable
+                        ? "直接读取本机触控板的五指收拢动作；无需辅助功能权限。"
+                        : "当前没有检测到内置触控板或妙控板。"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             Section("触发角") {
                 Toggle("移动到屏幕角落时唤起", isOn: $settings.hotCornersEnabled)
                     .onChange(of: settings.hotCornersEnabled) { _, _ in onHotCornersChanged() }
