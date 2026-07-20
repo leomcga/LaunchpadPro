@@ -319,8 +319,8 @@ private final class SystemPinchGestureOverride: @unchecked Sendable {
 struct FiveFingerPinchRecognizer {
     private static let minimumFingerCount = 5
     private static let minimumStartingSpread: Float = 0.09
-    private static let minimumContraction: Float = 0.025
-    private static let triggerRatio: Float = 0.84
+    private static let minimumContraction: Float = 0.015
+    private static let triggerRatio: Float = 0.90
     private static let maximumCentroidDrift: Float = 0.16
     private static let maximumGestureDuration = 2.0
     private static let newSequenceInterval = 0.30

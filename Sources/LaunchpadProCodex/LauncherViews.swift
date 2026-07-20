@@ -45,7 +45,7 @@ struct LauncherRootView: View {
                 onDismiss: onDismiss
             )
             .opacity(appeared ? 1 : 0)
-            .scaleEffect(appeared ? 1 : 1.035)
+            .scaleEffect(appeared ? 1 : 1.015)
 
             SearchBar(
                 model: model,
@@ -64,7 +64,7 @@ struct LauncherRootView: View {
         }
         .onAppear {
             folderChromeHidden = model.openFolderID != nil
-            withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+            withAnimation(.easeOut(duration: 0.10)) {
                 appeared = true
             }
             DispatchQueue.main.async {
