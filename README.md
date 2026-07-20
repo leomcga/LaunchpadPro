@@ -28,7 +28,7 @@ Download `LaunchpadPro.dmg` from the GitHub Releases page, open it, then drag `L
 ## Usage
 
 - Open launcher: five-finger pinch, `Option + Space`, menu bar icon, hot corner, or `launchpadpro://show`
-- Multi-display launch: the full-screen panel opens on the display containing the mouse pointer
+- Multi-display launch: the full-screen panel opens on the display containing the mouse pointer; pinching again while it is visible moves it to the newly targeted display
 - Search: type immediately after opening
 - Open app: click an app icon
 - Reorder: drag an app to a new position

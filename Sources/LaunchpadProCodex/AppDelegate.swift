@@ -171,8 +171,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupFiveFingerPinch() {
         FiveFingerPinchMonitor.shared.configure(enabled: settings.fiveFingerPinchEnabled) { [weak self] in
-            guard let self, !self.overlay.isVisible else { return }
-            self.overlay.show()
+            // A second pinch may intentionally target another display. Calling
+            // show again re-evaluates the pointer location and moves the panel.
+            self?.overlay.show()
         }
     }
 
