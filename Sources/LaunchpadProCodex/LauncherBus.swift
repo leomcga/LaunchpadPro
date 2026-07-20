@@ -10,6 +10,7 @@ final class LauncherBus: ObservableObject {
     @Published var endScrollTick: Int = 0
     @Published var displayFrameTick: Int = 0
     @Published var resetTick: Int = 0
+    @Published var targetScreenTopSafeArea: CGFloat = 0
 
     var latestScrollDX: CGFloat = 0
     var swipeVelocity: CGFloat = 0

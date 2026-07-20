@@ -14,6 +14,7 @@ private let verticalGridSpace = "vertical-grid"
 struct LauncherRootView: View {
     @ObservedObject var model: LaunchModel
     @ObservedObject var settings = AppSettings.shared
+    @ObservedObject private var bus = LauncherBus.shared
 
     var onDismiss: () -> Void
     var onOpenSettings: () -> Void
@@ -25,7 +26,7 @@ struct LauncherRootView: View {
     @State private var folderChromeHidden = false
 
     private var topInset: CGFloat {
-        max(NSScreen.main?.safeAreaInsets.top ?? 0, 38) + 10
+        max(bus.targetScreenTopSafeArea, 38) + 10
     }
 
     var body: some View {

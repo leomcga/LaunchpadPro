@@ -74,3 +74,41 @@ final class FiveFingerPinchRecognizerTests: XCTestCase {
         }
     }
 }
+
+final class OverlayScreenSelectionTests: XCTestCase {
+    private let frames = [
+        CGRect(x: 0, y: 0, width: 1512, height: 982),
+        CGRect(x: -1920, y: 0, width: 1920, height: 1080),
+        CGRect(x: 0, y: 982, width: 2560, height: 1440)
+    ]
+
+    func testSelectsScreenContainingMouseAcrossNegativeCoordinates() {
+        XCTAssertEqual(
+            OverlayController.targetScreenIndex(
+                mouseLocation: CGPoint(x: -800, y: 500),
+                screenFrames: frames,
+                fallbackIndex: 0
+            ),
+            1
+        )
+        XCTAssertEqual(
+            OverlayController.targetScreenIndex(
+                mouseLocation: CGPoint(x: 1000, y: 1200),
+                screenFrames: frames,
+                fallbackIndex: 0
+            ),
+            2
+        )
+    }
+
+    func testFallsBackToMainScreenWhenMouseMatchesNoDisplay() {
+        XCTAssertEqual(
+            OverlayController.targetScreenIndex(
+                mouseLocation: CGPoint(x: 5000, y: 5000),
+                screenFrames: frames,
+                fallbackIndex: 0
+            ),
+            0
+        )
+    }
+}

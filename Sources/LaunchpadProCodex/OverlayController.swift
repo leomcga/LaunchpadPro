@@ -34,14 +34,15 @@ final class OverlayController {
     }
 
     func show() {
-        guard let screen = NSScreen.main else { return }
+        guard let screen = screenUnderMouse() else { return }
 
         model.reload()
         model.searchText = ""
         model.openFolderID = nil
+        LauncherBus.shared.targetScreenTopSafeArea = screen.safeAreaInsets.top
         LauncherBus.shared.reset()
 
-        let panel = panel ?? makePanel()
+        let panel = panel ?? makePanel(screen: screen)
         self.panel = panel
 
         panel.setFrame(screen.frame, display: true)
@@ -71,9 +72,9 @@ final class OverlayController {
         })
     }
 
-    private func makePanel() -> OverlayPanel {
+    private func makePanel(screen: NSScreen) -> OverlayPanel {
         let panel = OverlayPanel(
-            contentRect: NSScreen.main?.frame ?? .zero,
+            contentRect: screen.frame,
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -111,6 +112,37 @@ final class OverlayController {
 
         panel.contentView = effect
         return panel
+    }
+
+    private func screenUnderMouse() -> NSScreen? {
+        let screens = NSScreen.screens
+        guard !screens.isEmpty else { return nil }
+
+        let fallbackIndex = NSScreen.main.flatMap { mainScreen in
+            screens.firstIndex { $0 === mainScreen }
+        }
+        guard let index = Self.targetScreenIndex(
+            mouseLocation: NSEvent.mouseLocation,
+            screenFrames: screens.map(\.frame),
+            fallbackIndex: fallbackIndex
+        ) else {
+            return nil
+        }
+        return screens[index]
+    }
+
+    nonisolated static func targetScreenIndex(
+        mouseLocation: CGPoint,
+        screenFrames: [CGRect],
+        fallbackIndex: Int?
+    ) -> Int? {
+        if let hoveredIndex = screenFrames.firstIndex(where: { $0.contains(mouseLocation) }) {
+            return hoveredIndex
+        }
+        if let fallbackIndex, screenFrames.indices.contains(fallbackIndex) {
+            return fallbackIndex
+        }
+        return screenFrames.indices.first
     }
 
     private func installLocalMonitor() {
