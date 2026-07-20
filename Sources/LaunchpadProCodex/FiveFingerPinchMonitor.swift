@@ -62,16 +62,15 @@ private let launchpadProContactCallback: MTContactCallback = {
         FiveFingerPinchMonitor.shared.endContactSequence()
         return 0
     }
-    let shouldConsume = FiveFingerPinchMonitor.shared.process(
+    FiveFingerPinchMonitor.shared.process(
         touches: touches,
         count: Int(count),
         timestamp: timestamp
     )
 
-    // macOS 26 maps the old Launchpad pinch to Spotlight Apps. Claim only
-    // five-finger frames so that gesture cannot race our launcher; four-finger
-    // Mission Control and other lower-finger-count gestures remain untouched.
-    return shouldConsume ? 1 : 0
+    // This callback must stay observational. Returning 1 is not a supported
+    // suppression mechanism and can prevent later contact sequences on macOS 26.
+    return 0
 }
 
 /// Observes raw trackpad contacts and recognizes a deliberate five-finger pinch.
@@ -167,11 +166,11 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
         touches: UnsafeMutableRawPointer,
         count: Int,
         timestamp: Double
-    ) -> Bool {
+    ) {
         lock.lock()
         guard isEnabled else {
             lock.unlock()
-            return false
+            return
         }
 
         let rawTouches = touches.bindMemory(to: MTTouch.self, capacity: count)
@@ -186,10 +185,6 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
             activePoints.append(touch.normalizedVector.position)
         }
 
-        let shouldConsume = Self.shouldConsumeSystemGesture(
-            activeFingerCount: activePoints.count,
-            enabled: isEnabled
-        )
         let didRecognize = recognizer.process(points: activePoints, timestamp: timestamp)
         let action = didRecognize ? self.action : nil
         lock.unlock()
@@ -197,14 +192,6 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
         if let action {
             DispatchQueue.main.async(execute: action)
         }
-        return shouldConsume
-    }
-
-    static func shouldConsumeSystemGesture(
-        activeFingerCount: Int,
-        enabled: Bool
-    ) -> Bool {
-        enabled && activeFingerCount >= 5
     }
 }
 
@@ -336,8 +323,10 @@ struct FiveFingerPinchRecognizer {
     private static let triggerRatio: Float = 0.70
     private static let maximumCentroidDrift: Float = 0.16
     private static let maximumGestureDuration = 2.0
+    private static let newSequenceInterval = 0.30
 
     private var startingTimestamp: Double?
+    private var lastFrameTimestamp: Double?
     private var startingCentroid: MTPoint?
     private var maximumSpread: Float = 0
     private var stablePinchFrames = 0
@@ -345,6 +334,12 @@ struct FiveFingerPinchRecognizer {
     private var didTrigger = false
 
     mutating func process(points: [MTPoint], timestamp: Double) -> Bool {
+        if let lastFrameTimestamp,
+           timestamp - lastFrameTimestamp > Self.newSequenceInterval {
+            reset()
+        }
+        lastFrameTimestamp = timestamp
+
         if didTrigger {
             if points.count <= 2 {
                 reset()
@@ -403,6 +398,7 @@ struct FiveFingerPinchRecognizer {
 
     mutating func reset() {
         startingTimestamp = nil
+        lastFrameTimestamp = nil
         startingCentroid = nil
         maximumSpread = 0
         stablePinchFrames = 0

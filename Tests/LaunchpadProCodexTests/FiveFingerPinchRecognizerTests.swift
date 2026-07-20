@@ -40,25 +40,16 @@ final class FiveFingerPinchRecognizerTests: XCTestCase {
         )
     }
 
-    func testOnlyEnabledFiveFingerFramesOverrideSystemGesture() {
-        XCTAssertTrue(
-            FiveFingerPinchMonitor.shouldConsumeSystemGesture(
-                activeFingerCount: 5,
-                enabled: true
-            )
-        )
-        XCTAssertFalse(
-            FiveFingerPinchMonitor.shouldConsumeSystemGesture(
-                activeFingerCount: 4,
-                enabled: true
-            )
-        )
-        XCTAssertFalse(
-            FiveFingerPinchMonitor.shouldConsumeSystemGesture(
-                activeFingerCount: 5,
-                enabled: false
-            )
-        )
+    func testFrameGapStartsANewGestureWithoutReleaseFrame() {
+        var recognizer = FiveFingerPinchRecognizer()
+
+        XCTAssertFalse(recognizer.process(points: points(scale: 1.0), timestamp: 0.0))
+        XCTAssertFalse(recognizer.process(points: points(scale: 0.66), timestamp: 0.1))
+        XCTAssertTrue(recognizer.process(points: points(scale: 0.64), timestamp: 0.2))
+
+        XCTAssertFalse(recognizer.process(points: points(scale: 1.0), timestamp: 0.7))
+        XCTAssertFalse(recognizer.process(points: points(scale: 0.66), timestamp: 0.8))
+        XCTAssertTrue(recognizer.process(points: points(scale: 0.64), timestamp: 0.9))
     }
 
     private func points(scale: Float) -> [MTPoint] {

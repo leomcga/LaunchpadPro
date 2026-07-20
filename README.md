@@ -134,12 +134,12 @@ LaunchpadPro therefore keeps all access to Apple's private `MultitouchSupport`
 framework inside `FiveFingerPinchMonitor.swift`. The recognizer only opens the
 launcher after a five-touch cloud contracts substantially without moving its
 centroid, which avoids treating five-finger swipes as pinches. While the feature
-is enabled, it consumes only frames containing five or more active touches. Because
-macOS 26 does not reliably honor callback consumption for its Spotlight Apps
-gesture, LaunchpadPro also preserves and temporarily disables the system four/five-
-finger pinch preferences while it owns the gesture, restoring them when the feature
-is turned off. Gestures with four or fewer fingers continue to pass through the raw
-callback.
+The raw callback remains observational and always returns `0`; macOS 26 does not
+reliably support suppressing Spotlight Apps through that return value. LaunchpadPro
+instead preserves and temporarily disables the system four/five-finger pinch
+preferences while it owns the gesture, restoring them when the feature is turned
+off. A frame-time gap also resets the one-shot recognizer, so devices that omit a
+zero-contact release frame can still begin the next gesture.
 
 This implementation is intended for direct distribution and local use, not the Mac
 App Store. A future macOS update may require updating the private-framework bridge.
