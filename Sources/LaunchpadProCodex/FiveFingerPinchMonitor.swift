@@ -56,7 +56,12 @@ private struct MTTouch {
 
 private let launchpadProContactCallback: MTContactCallback = {
     _, touches, count, timestamp, _ in
-    guard let touches, count > 0 else { return 0 }
+    guard let touches, count > 0 else {
+        // Some devices finish a contact sequence with a zero-contact frame and
+        // no touch buffer. Forward that boundary so the one-shot latch resets.
+        FiveFingerPinchMonitor.shared.endContactSequence()
+        return 0
+    }
     let shouldConsume = FiveFingerPinchMonitor.shared.process(
         touches: touches,
         count: Int(count),
@@ -96,6 +101,8 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
     /// Keeping the registered callback alive when the setting is toggled avoids
     /// private-framework start/stop races.
     func configure(enabled: Bool, action: @escaping () -> Void) {
+        SystemPinchGestureOverride.shared.configure(enabled: enabled)
+
         lock.lock()
         isEnabled = enabled
         self.action = action
@@ -111,6 +118,14 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
         if shouldStart {
             startDevices()
         }
+    }
+
+    fileprivate func endContactSequence() {
+        lock.lock()
+        if isEnabled {
+            recognizer.reset()
+        }
+        lock.unlock()
     }
 
     private func startDevices() {
@@ -190,6 +205,125 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
         enabled: Bool
     ) -> Bool {
         enabled && activeFingerCount >= 5
+    }
+}
+
+/// macOS 26 maps the former Launchpad gesture to Spotlight Apps. Raw
+/// MultitouchSupport callbacks are observable but do not reliably prevent that
+/// system action, so preserve the user's settings and disable the competing
+/// four/five-finger pinch while LaunchpadPro owns the gesture.
+private final class SystemPinchGestureOverride: @unchecked Sendable {
+    static let shared = SystemPinchGestureOverride()
+
+    private struct Preference {
+        let domain: String
+        let key: String
+
+        var storageKey: String { "\(domain)|\(key)" }
+    }
+
+    private let preferences = [
+        Preference(
+            domain: "com.apple.AppleMultitouchTrackpad",
+            key: "TrackpadFourFingerPinchGesture"
+        ),
+        Preference(
+            domain: "com.apple.AppleMultitouchTrackpad",
+            key: "TrackpadFiveFingerPinchGesture"
+        ),
+        Preference(
+            domain: "com.apple.driver.AppleBluetoothMultitouch.trackpad",
+            key: "TrackpadFourFingerPinchGesture"
+        ),
+        Preference(
+            domain: "com.apple.driver.AppleBluetoothMultitouch.trackpad",
+            key: "TrackpadFiveFingerPinchGesture"
+        )
+    ]
+    private let defaults = UserDefaults.standard
+    private let activeKey = "codex.systemPinchOverrideActive"
+    private let originalsKey = "codex.systemPinchOriginalValues"
+
+    private init() {}
+
+    func configure(enabled: Bool) {
+        if enabled {
+            enableOverride()
+        } else {
+            restoreOriginals()
+        }
+    }
+
+    private func enableOverride() {
+        if !defaults.bool(forKey: activeKey) {
+            var originals: [String: Int] = [:]
+            for preference in preferences {
+                originals[preference.storageKey] = value(for: preference) ?? 2
+            }
+            defaults.set(originals, forKey: originalsKey)
+            defaults.set(true, forKey: activeKey)
+        }
+
+        var didChange = false
+        for preference in preferences where value(for: preference) != 0 {
+            setValue(0, for: preference)
+            didChange = true
+        }
+        synchronizeDomains()
+
+        if didChange {
+            restartDock()
+        }
+    }
+
+    private func restoreOriginals() {
+        guard defaults.bool(forKey: activeKey) else { return }
+        let originals = defaults.dictionary(forKey: originalsKey) as? [String: Int] ?? [:]
+        var didChange = false
+
+        for preference in preferences {
+            let original = originals[preference.storageKey] ?? 2
+            if value(for: preference) != original {
+                setValue(original, for: preference)
+                didChange = true
+            }
+        }
+        synchronizeDomains()
+        defaults.removeObject(forKey: originalsKey)
+        defaults.set(false, forKey: activeKey)
+
+        if didChange {
+            restartDock()
+        }
+    }
+
+    private func value(for preference: Preference) -> Int? {
+        let value = CFPreferencesCopyAppValue(
+            preference.key as CFString,
+            preference.domain as CFString
+        )
+        return (value as? NSNumber)?.intValue
+    }
+
+    private func setValue(_ value: Int, for preference: Preference) {
+        CFPreferencesSetAppValue(
+            preference.key as CFString,
+            NSNumber(value: value),
+            preference.domain as CFString
+        )
+    }
+
+    private func synchronizeDomains() {
+        for domain in Set(preferences.map(\.domain)) {
+            CFPreferencesAppSynchronize(domain as CFString)
+        }
+    }
+
+    private func restartDock() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
+        process.arguments = ["Dock"]
+        try? process.run()
     }
 }
 

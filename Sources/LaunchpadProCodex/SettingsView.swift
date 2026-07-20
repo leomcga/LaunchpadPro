@@ -162,7 +162,7 @@ private struct GeneralSettingsTab: View {
 
                 Text(
                     FiveFingerPinchMonitor.shared.isAvailable
-                        ? "直接读取本机触控板的五指收拢动作；无需辅助功能权限。"
+                        ? "直接读取五指收拢动作；启用时会暂时接管系统的应用搜索捏合手势，关闭后恢复。"
                         : "当前没有检测到内置触控板或妙控板。"
                 )
                 .font(.caption)
