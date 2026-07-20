@@ -57,14 +57,16 @@ private struct MTTouch {
 private let launchpadProContactCallback: MTContactCallback = {
     _, touches, count, timestamp, _ in
     guard let touches, count > 0 else { return 0 }
-    FiveFingerPinchMonitor.shared.process(
+    let shouldConsume = FiveFingerPinchMonitor.shared.process(
         touches: touches,
         count: Int(count),
         timestamp: timestamp
     )
 
-    // Never consume the frame. System gestures continue to work normally.
-    return 0
+    // macOS 26 maps the old Launchpad pinch to Spotlight Apps. Claim only
+    // five-finger frames so that gesture cannot race our launcher; four-finger
+    // Mission Control and other lower-finger-count gestures remain untouched.
+    return shouldConsume ? 1 : 0
 }
 
 /// Observes raw trackpad contacts and recognizes a deliberate five-finger pinch.
@@ -150,11 +152,11 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
         touches: UnsafeMutableRawPointer,
         count: Int,
         timestamp: Double
-    ) {
+    ) -> Bool {
         lock.lock()
         guard isEnabled else {
             lock.unlock()
-            return
+            return false
         }
 
         let rawTouches = touches.bindMemory(to: MTTouch.self, capacity: count)
@@ -169,12 +171,25 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
             activePoints.append(touch.normalizedVector.position)
         }
 
+        let shouldConsume = Self.shouldConsumeSystemGesture(
+            activeFingerCount: activePoints.count,
+            enabled: isEnabled
+        )
         let didRecognize = recognizer.process(points: activePoints, timestamp: timestamp)
         let action = didRecognize ? self.action : nil
         lock.unlock()
 
-        guard let action else { return }
-        DispatchQueue.main.async(execute: action)
+        if let action {
+            DispatchQueue.main.async(execute: action)
+        }
+        return shouldConsume
+    }
+
+    static func shouldConsumeSystemGesture(
+        activeFingerCount: Int,
+        enabled: Bool
+    ) -> Bool {
+        enabled && activeFingerCount >= 5
     }
 }
 

@@ -40,6 +40,27 @@ final class FiveFingerPinchRecognizerTests: XCTestCase {
         )
     }
 
+    func testOnlyEnabledFiveFingerFramesOverrideSystemGesture() {
+        XCTAssertTrue(
+            FiveFingerPinchMonitor.shouldConsumeSystemGesture(
+                activeFingerCount: 5,
+                enabled: true
+            )
+        )
+        XCTAssertFalse(
+            FiveFingerPinchMonitor.shouldConsumeSystemGesture(
+                activeFingerCount: 4,
+                enabled: true
+            )
+        )
+        XCTAssertFalse(
+            FiveFingerPinchMonitor.shouldConsumeSystemGesture(
+                activeFingerCount: 5,
+                enabled: false
+            )
+        )
+    }
+
     private func points(scale: Float) -> [MTPoint] {
         let center = MTPoint(x: 0.5, y: 0.5)
         let offsets: [MTPoint] = [

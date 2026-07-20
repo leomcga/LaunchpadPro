@@ -133,8 +133,10 @@ macOS does not provide a public API for observing a specific finger count global
 LaunchpadPro therefore keeps all access to Apple's private `MultitouchSupport`
 framework inside `FiveFingerPinchMonitor.swift`. The recognizer only opens the
 launcher after a five-touch cloud contracts substantially without moving its
-centroid, which avoids treating five-finger swipes as pinches. It does not consume
-touch frames, so macOS system gestures continue to receive them.
+centroid, which avoids treating five-finger swipes as pinches. While the feature
+is enabled, it consumes only frames containing five or more active touches so the
+macOS 26 Spotlight Apps gesture cannot race the launcher; gestures with four or
+fewer fingers continue to pass through.
 
 This implementation is intended for direct distribution and local use, not the Mac
 App Store. A future macOS update may require updating the private-framework bridge.
