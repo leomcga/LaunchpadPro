@@ -44,7 +44,7 @@ if [[ "${USE_NOTARIZED_APP}" != "1" ]]; then
 fi
 
 if [[ "${UPLOAD_FOR_NOTARIZATION}" == "1" ]]; then
-    upload_options="$(mktemp "${TMPDIR:-/tmp}/launchpadpro-upload-options.XXXXXX.plist")"
+    upload_options="$(mktemp "${TMPDIR:-/tmp}/launchpadpro-upload-options.XXXXXX")"
     cp "${EXPORT_OPTIONS}" "${upload_options}"
     /usr/libexec/PlistBuddy -c "Set :destination upload" "${upload_options}" 2>/dev/null || \
         /usr/libexec/PlistBuddy -c "Add :destination string upload" "${upload_options}"
