@@ -5,6 +5,8 @@
 ![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey)
 [![Website](https://img.shields.io/badge/website-leomcga.github.io%2FLaunchpadPro-2f7df6)](https://leomcga.github.io/LaunchpadPro/)
 
+![LaunchpadPro full-screen launcher](docs/assets/screenshot.jpg)
+
 LaunchpadPro is a native macOS app launcher built with SwiftUI and AppKit. It gives you a fast full-screen grid for opening apps, organizing folders, searching, and keeping multiple saved layouts.
 
 ## Highlights
