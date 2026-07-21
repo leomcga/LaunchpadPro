@@ -43,7 +43,29 @@ if [[ "${USE_NOTARIZED_APP}" != "1" ]]; then
         -allowProvisioningUpdates
 fi
 
-if [[ "${UPLOAD_FOR_NOTARIZATION}" == "1" ]]; then
+# With NOTARY_PROFILE set (a keychain profile created via
+# `xcrun notarytool store-credentials`), notarization runs entirely on the
+# command line and does not depend on an Xcode account session.
+NOTARY_PROFILE="${NOTARY_PROFILE:-}"
+if [[ -n "${NOTARY_PROFILE}" ]]; then
+    app_for_notary="${EXPORT_PATH}/${APP_NAME}.app"
+    notary_zip="build/${APP_NAME}-notary.zip"
+
+    echo "==> submitting for notarization via profile ${NOTARY_PROFILE}"
+    rm -f "${notary_zip}"
+    ditto -c -k --keepParent "${app_for_notary}" "${notary_zip}"
+    xcrun notarytool submit "${notary_zip}" \
+        --keychain-profile "${NOTARY_PROFILE}" \
+        --wait
+    rm -f "${notary_zip}"
+
+    echo "==> stapling notarization ticket"
+    xcrun stapler staple "${app_for_notary}"
+
+    rm -rf "${NOTARIZED_EXPORT_PATH}"
+    mkdir -p "${NOTARIZED_EXPORT_PATH}"
+    ditto "${app_for_notary}" "${NOTARIZED_EXPORT_PATH}/${APP_NAME}.app"
+elif [[ "${UPLOAD_FOR_NOTARIZATION}" == "1" ]]; then
     upload_options="$(mktemp "${TMPDIR:-/tmp}/launchpadpro-upload-options.XXXXXX")"
     cp "${EXPORT_OPTIONS}" "${upload_options}"
     /usr/libexec/PlistBuddy -c "Set :destination upload" "${upload_options}" 2>/dev/null || \
@@ -62,7 +84,9 @@ if [[ "${UPLOAD_FOR_NOTARIZATION}" == "1" ]]; then
 fi
 
 app_source="${EXPORT_PATH}/${APP_NAME}.app"
-if [[ "${USE_NOTARIZED_APP}" == "1" ]]; then
+if [[ -n "${NOTARY_PROFILE}" ]]; then
+    app_source="${NOTARIZED_EXPORT_PATH}/${APP_NAME}.app"
+elif [[ "${USE_NOTARIZED_APP}" == "1" ]]; then
     rm -rf "${NOTARIZED_EXPORT_PATH}"
     echo "==> exporting notarized app"
     xcodebuild \
