@@ -1,18 +1,24 @@
-## LaunchpadPro 1.2.1
+## LaunchpadPro 1.2.2
 
-LaunchpadPro 1.2.1 fixes the five-finger pinch racing the macOS 26 Spotlight
-Apps window and restores the system spread-to-show-desktop gesture.
+LaunchpadPro 1.2.2 keeps the gesture configuration healthy on its own: the
+suppression of the macOS 26 Spotlight Apps pinch now repairs itself when
+anything else on the system disturbs it.
 
-### Fixes
+### Highlights
 
+- Automatic repair of the gesture override: LaunchpadPro re-checks the system
+  gesture switches after every wake from sleep and every 5 minutes, fixing
+  drift caused by older builds, System Settings rewrites, or an interrupted
+  Dock restart; a check is silent unless a value actually drifted
 - The five-finger pinch no longer opens the macOS 26 Spotlight Apps search
-  alongside the launcher: the system response is now suppressed through the
-  Dock's `showLaunchpadGestureEnabled` switch, which macOS 26 actually consults
+  alongside the launcher: the system response is suppressed through the Dock's
+  `showLaunchpadGestureEnabled` switch, which macOS 26 actually consults
 - The system five-finger spread-to-show-desktop gesture works again; earlier
-  builds zeroed the shared trackpad pinch/spread recognizer keys, which macOS 26
-  pairs with the "Show Desktop" gesture
-- Upgraded installs automatically repair trackpad keys zeroed by earlier builds;
-  disabling the pinch setting restores the Dock switch to its previous value
+  builds zeroed the shared trackpad pinch/spread recognizer keys, which macOS
+  26 pairs with the "Show Desktop" gesture
+- Upgraded installs automatically restore trackpad keys zeroed by earlier
+  builds; disabling the pinch setting restores the Dock switch to its previous
+  value
 
 ### Install
 

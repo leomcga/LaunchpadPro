@@ -1,3 +1,4 @@
+import AppKit
 import CoreFoundation
 import Foundation
 
@@ -252,14 +253,78 @@ private final class SystemPinchGestureOverride: @unchecked Sendable {
     private let activeKey = "codex.systemPinchOverrideActive"
     private let originalsKey = "codex.systemPinchOriginalValues"
 
+    private static let repairInterval: TimeInterval = 300
+
+    private let lock = NSLock()
+    private var isEnabled = false
+    private var repairTimer: DispatchSourceTimer?
+    private var wakeObserver: NSObjectProtocol?
+    private let repairQueue = DispatchQueue(label: "codex.systemPinchOverride.repair")
+
     private init() {}
 
     func configure(enabled: Bool) {
+        lock.lock()
+        isEnabled = enabled
+        lock.unlock()
+
         if enabled {
             enableOverride()
+            startAutoRepair()
         } else {
+            stopAutoRepair()
             restoreOriginals()
         }
+    }
+
+    /// External events can undo the override underneath us: an older build
+    /// zeroing the trackpad keys at login, System Settings rewriting the pair
+    /// when the user toggles a gesture, or an interrupted Dock restart. Re-apply
+    /// after wake and on a slow timer; a pass is silent (no Dock restart) unless
+    /// a value actually drifted.
+    private func startAutoRepair() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard repairTimer == nil else { return }
+
+        let timer = DispatchSource.makeTimerSource(queue: repairQueue)
+        timer.schedule(
+            deadline: .now() + Self.repairInterval,
+            repeating: Self.repairInterval,
+            leeway: .seconds(30)
+        )
+        timer.setEventHandler { [weak self] in
+            self?.repairIfNeeded()
+        }
+        timer.resume()
+        repairTimer = timer
+
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.repairQueue.async { self?.repairIfNeeded() }
+        }
+    }
+
+    private func stopAutoRepair() {
+        lock.lock()
+        defer { lock.unlock() }
+        repairTimer?.cancel()
+        repairTimer = nil
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+            self.wakeObserver = nil
+        }
+    }
+
+    private func repairIfNeeded() {
+        lock.lock()
+        let enabled = isEnabled
+        lock.unlock()
+        guard enabled else { return }
+        enableOverride()
     }
 
     private func enableOverride() {
