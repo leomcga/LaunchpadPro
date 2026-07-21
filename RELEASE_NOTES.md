@@ -1,20 +1,18 @@
-## LaunchpadPro 1.2.0
+## LaunchpadPro 1.2.1
 
-LaunchpadPro 1.2.0 adds a native, repeatable five-finger pinch launcher for
-macOS 26 and completes the multi-display experience.
+LaunchpadPro 1.2.1 fixes the five-finger pinch racing the macOS 26 Spotlight
+Apps window and restores the system spread-to-show-desktop gesture.
 
-### Highlights
+### Fixes
 
-- Native five-finger pinch-to-open gesture with approximately 10% contraction
-- Prevents macOS 26 Spotlight Apps from racing the replacement gesture
-- Reliable repeated pinches, including devices that omit release frames
-- Opens on the display containing the mouse pointer
-- Repeated pinches can move an already-visible launcher between displays
-- Faster 80 ms panel fade and 100 ms content reveal
-- Refined app icon with a larger, borderless macOS silhouette
-- Universal `arm64 + x86_64` macOS application
-- Existing grid, search, folders, drag ordering, layout memories, hotkey, hot
-  corner, menu bar, and local-only persistence remain included
+- The five-finger pinch no longer opens the macOS 26 Spotlight Apps search
+  alongside the launcher: the system response is now suppressed through the
+  Dock's `showLaunchpadGestureEnabled` switch, which macOS 26 actually consults
+- The system five-finger spread-to-show-desktop gesture works again; earlier
+  builds zeroed the shared trackpad pinch/spread recognizer keys, which macOS 26
+  pairs with the "Show Desktop" gesture
+- Upgraded installs automatically repair trackpad keys zeroed by earlier builds;
+  disabling the pinch setting restores the Dock switch to its previous value
 
 ### Install
 

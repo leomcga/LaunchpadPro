@@ -197,34 +197,55 @@ final class FiveFingerPinchMonitor: @unchecked Sendable {
 
 /// macOS 26 maps the former Launchpad gesture to Spotlight Apps. Raw
 /// MultitouchSupport callbacks are observable but do not reliably prevent that
-/// system action, so preserve the user's settings and disable the competing
-/// four/five-finger pinch while LaunchpadPro owns the gesture.
+/// system action, so suppress the system response while LaunchpadPro owns the
+/// gesture.
+///
+/// On macOS 26 the Dock decides whether a pinch opens Spotlight Apps solely from
+/// `com.apple.dock showLaunchpadGestureEnabled`. The AppleMultitouchTrackpad
+/// `Trackpad*PinchGesture` keys gate recognition of the whole pinch/spread
+/// family — System Settings writes them in pairs for the "Show Desktop" spread —
+/// so zeroing them (as pre-1.2.1 builds did) breaks spread-to-show-desktop
+/// without stopping the pinch. Only the Dock key is overridden now; the trackpad
+/// keys are left untouched and restored if an older build zeroed them.
 private final class SystemPinchGestureOverride: @unchecked Sendable {
     static let shared = SystemPinchGestureOverride()
 
     private struct Preference {
         let domain: String
         let key: String
+        let defaultValue: Int
 
         var storageKey: String { "\(domain)|\(key)" }
     }
 
-    private let preferences = [
+    private let dockPreference = Preference(
+        domain: "com.apple.dock",
+        key: "showLaunchpadGestureEnabled",
+        defaultValue: 1
+    )
+
+    /// Keys suppressed by pre-1.2.1 builds. Never written to 0 anymore, only
+    /// restored so upgraded installs get spread-to-show-desktop back.
+    private let legacyPreferences = [
         Preference(
             domain: "com.apple.AppleMultitouchTrackpad",
-            key: "TrackpadFourFingerPinchGesture"
+            key: "TrackpadFourFingerPinchGesture",
+            defaultValue: 2
         ),
         Preference(
             domain: "com.apple.AppleMultitouchTrackpad",
-            key: "TrackpadFiveFingerPinchGesture"
+            key: "TrackpadFiveFingerPinchGesture",
+            defaultValue: 2
         ),
         Preference(
             domain: "com.apple.driver.AppleBluetoothMultitouch.trackpad",
-            key: "TrackpadFourFingerPinchGesture"
+            key: "TrackpadFourFingerPinchGesture",
+            defaultValue: 2
         ),
         Preference(
             domain: "com.apple.driver.AppleBluetoothMultitouch.trackpad",
-            key: "TrackpadFiveFingerPinchGesture"
+            key: "TrackpadFiveFingerPinchGesture",
+            defaultValue: 2
         )
     ]
     private let defaults = UserDefaults.standard
@@ -242,18 +263,18 @@ private final class SystemPinchGestureOverride: @unchecked Sendable {
     }
 
     private func enableOverride() {
-        if !defaults.bool(forKey: activeKey) {
-            var originals: [String: Int] = [:]
-            for preference in preferences {
-                originals[preference.storageKey] = value(for: preference) ?? 2
-            }
-            defaults.set(originals, forKey: originalsKey)
-            defaults.set(true, forKey: activeKey)
-        }
+        var originals = defaults.dictionary(forKey: originalsKey) as? [String: Int] ?? [:]
+        var didChange = restoreLegacyPreferences(originals: &originals)
 
-        var didChange = false
-        for preference in preferences where value(for: preference) != 0 {
-            setValue(0, for: preference)
+        if !defaults.bool(forKey: activeKey) || originals[dockPreference.storageKey] == nil {
+            originals[dockPreference.storageKey] =
+                value(for: dockPreference) ?? dockPreference.defaultValue
+        }
+        defaults.set(originals, forKey: originalsKey)
+        defaults.set(true, forKey: activeKey)
+
+        if value(for: dockPreference) != 0 {
+            setValue(0, for: dockPreference)
             didChange = true
         }
         synchronizeDomains()
@@ -265,15 +286,13 @@ private final class SystemPinchGestureOverride: @unchecked Sendable {
 
     private func restoreOriginals() {
         guard defaults.bool(forKey: activeKey) else { return }
-        let originals = defaults.dictionary(forKey: originalsKey) as? [String: Int] ?? [:]
-        var didChange = false
+        var originals = defaults.dictionary(forKey: originalsKey) as? [String: Int] ?? [:]
+        var didChange = restoreLegacyPreferences(originals: &originals)
 
-        for preference in preferences {
-            let original = originals[preference.storageKey] ?? 2
-            if value(for: preference) != original {
-                setValue(original, for: preference)
-                didChange = true
-            }
+        let original = originals[dockPreference.storageKey] ?? dockPreference.defaultValue
+        if value(for: dockPreference) != original {
+            setValue(original, for: dockPreference)
+            didChange = true
         }
         synchronizeDomains()
         defaults.removeObject(forKey: originalsKey)
@@ -282,6 +301,22 @@ private final class SystemPinchGestureOverride: @unchecked Sendable {
         if didChange {
             restartDock()
         }
+    }
+
+    /// Undoes the pre-1.2.1 zeroing of the trackpad pinch/spread keys. A key is
+    /// only touched while it reads 0, so user changes made after the upgrade win.
+    private func restoreLegacyPreferences(originals: inout [String: Int]) -> Bool {
+        var didChange = false
+        for preference in legacyPreferences {
+            defer { originals.removeValue(forKey: preference.storageKey) }
+            guard value(for: preference) == 0 else { continue }
+            let original = originals[preference.storageKey] ?? preference.defaultValue
+            if original != 0 {
+                setValue(original, for: preference)
+                didChange = true
+            }
+        }
+        return didChange
     }
 
     private func value(for preference: Preference) -> Int? {
@@ -301,7 +336,7 @@ private final class SystemPinchGestureOverride: @unchecked Sendable {
     }
 
     private func synchronizeDomains() {
-        for domain in Set(preferences.map(\.domain)) {
+        for domain in Set(legacyPreferences.map(\.domain) + [dockPreference.domain]) {
             CFPreferencesAppSynchronize(domain as CFString)
         }
     }

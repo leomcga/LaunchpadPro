@@ -18,10 +18,10 @@ LaunchpadPro is a native macOS app launcher built with SwiftUI and AppKit. It gi
 
 ## Download
 
-Current release: **LaunchpadPro 1.2.0 (build 2)**.
+Current release: **LaunchpadPro 1.2.1 (build 1)**.
 
 Download the signed and notarized
-[`LaunchpadPro.dmg`](https://github.com/leomcga/LaunchpadPro/releases/download/v1.2.0/LaunchpadPro.dmg),
+[`LaunchpadPro.dmg`](https://github.com/leomcga/LaunchpadPro/releases/download/v1.2.1/LaunchpadPro.dmg),
 open it, then drag `LaunchpadPro.app` into `Applications`.
 
 The current public build is signed with a Developer ID certificate and notarized
